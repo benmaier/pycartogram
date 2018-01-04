@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(name='pycartogram',
       version='0.0.1',
-      description='',
+      description='Collection of tools to effeciently generate cartograms as developed by Gastner and Newman.',
       url='https://github.com/benmaier/pycartogram',
       author='Benjamin F. Maier',
       author_email='benjaminfrankmaier@gmail.com',
