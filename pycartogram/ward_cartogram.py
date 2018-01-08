@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy as np
 import shapely.geometry as sgeom
 from shapely.ops import cascaded_union
@@ -8,6 +9,7 @@ import matplotlib.pyplot as pl
 import progressbar
 import cCartogram as cart
 from pycartogram.tools import *
+import visvalingamwyatt as vw
 
 class WardCartogram():
 
@@ -19,13 +21,18 @@ class WardCartogram():
                  dominant_dimension = 'x',
                  x_raster_size = 1024,
                  y_raster_size = 768,
+                 threshold_for_polygon_coarse_graining = None,
                  ):
         """
         wards:        list of wards as shapely.Polygon
         ward_density: list of density values for the wards
         norm_density: if this value is 'True' the ward_density will be normed by area (default: False)
         """
-        self.wards = wards
+
+        if threshold_for_polygon_coarse_graining is not None:
+            self.wards = self._coarse_grain_wards(wards,threshold_for_polygon_coarse_graining)
+        else:
+            self.wards = wards
         self.ward_density = ward_density
 
         if norm_density:
@@ -43,6 +50,15 @@ class WardCartogram():
             )
 
         self.density_matrix = None
+
+    def _coarse_grain_wards(self,wards,th):
+        new_wards = []
+        for ward in wards:
+            coo = ward.exterior.coords.xy
+            new_coo = vw.Simplifier(zip(*coo)).simplify(threshold=th)
+            new_ward = Polygon(new_coo)
+            new_wards.append(new_ward)
+        return new_wards
 
     def compute_bounding_box(
             self,
@@ -143,10 +159,11 @@ class WardCartogram():
         density = np.zeros((self.xsize,self.ysize),dtype=float)
 
         if verbose:
+            print("casting ward density to discrete matrix values")
             bar = progressbar.ProgressBar(
                 max_value = len(self.wards) - 1,
                 widgets = [
-                    progressbar.SimpleProgress(),
+                    progressbar.SimpleProgress()," ",
                     progressbar.ETA(),
                 ]
             )
@@ -191,6 +208,9 @@ class WardCartogram():
         return new_x, new_y
 
     def compute_cartogram(self,offset=0.005,blur=0.,verbose=False):
+
+        if verbose:
+            print("computing cartogram...")
         self.cartogram = cart.compute_cartogram(
                                             self.density_matrix.tolist(),
                                             offset = offset,
@@ -199,11 +219,12 @@ class WardCartogram():
                                             )
         return self.cartogram
 
-    def transform_wards(self,verbose=False):
+    def transform_wards(self,verbose=False,ignore_self_intersection=True):
         new_wards = []
         new_ward_density = [] 
 
         if verbose:
+            print("transforming wards to new coordinates...")
             bar = progressbar.ProgressBar(
                 max_value = len(self.wards),
                 widgets = [progressbar.SimpleProgress()]
@@ -216,6 +237,11 @@ class WardCartogram():
             new_ij = cart.remap_coordinates(zip(i_,j_),self.cartogram,self.xsize,self.ysize)
             new_coords = [ (self.x_from_i(i), self.y_from_j(j)) for i,j in new_ij]
             new_ward = Polygon(new_coords)
+            #try:
+            #except TopologyException:
+            if ignore_self_intersection and not new_ward.is_valid:
+                new_ward = new_ward.buffer(0)
+
             new_wards.append(new_ward)
             new_ward_density.append(self.ward_density[iward] * ward.area / new_ward.area)
 
@@ -237,7 +263,7 @@ class WardCartogram():
     def compute(self,verbose=False):
         """do everything after init"""
         self.cast_density_to_matrix(verbose)
-        self.compute_cartogram(verbose)
+        self.compute_cartogram(verbose=verbose)
         return self.transform_wards(verbose)
 
     def _convert_wards_to_list(self,wards):
@@ -275,8 +301,10 @@ class WardCartogram():
             bbox = self.orig_bbox
             whole = self.whole_shape
 
-        if ward_colors is None:
+        if ward_colors is None and not show_density_matrix:
             ward_colors = 'log_density'
+        elif show_density_matrix:
+            ward_colors = 'None'
 
         if mpl.colors.is_color_like(ward_colors):
             color = lambda iward: ward_colors
@@ -313,7 +341,7 @@ class WardCartogram():
                             )
         ax.add_patch(patch)
             
-        # set berlin background patch black with grey edges
+        # set whole shape background
         if outline_whole_shape:
             patch = PolygonPatch(whole,
                                  facecolor = 'None',
@@ -324,14 +352,17 @@ class WardCartogram():
             ax.add_patch(patch)
 
 
+        # get bounds of map
         x_, y_ = self.get_ward_bounds(bbox)
-        x_b, y_b = self.get_ward_bounds(self.big_bbox)
+
         if show_density_matrix:
+            x_b, y_b = self.get_ward_bounds(self.big_bbox)
             ax.imshow(self.density_matrix.T,
-                      extent=x_+y_)
+                      extent=x_b+y_b)
         else:
             ax.set_aspect('equal')
 
+        # plot every ward
         for ward_id, ward in enumerate(wards):
             fc = color(ward_id)
             patch = PolygonPatch(ward,
