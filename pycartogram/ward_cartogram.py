@@ -104,7 +104,7 @@ class WardCartogram():
                                  (x_[1],y_[0]),
                                  (x_[1],y_[1]),
                                  (x_[0],y_[1]),
-                                 ])
+                                ])
 
         size_x = self.tile_size 
         size_y = self.tile_size 
@@ -196,12 +196,16 @@ class WardCartogram():
         self.density_matrix = density
         return self.density_matrix
 
-    def transform_coords(x,y):
+    def transform_coords(self,x,y):
         old_x = x
         old_y = y
         i_ = self.i_from_x(np.array(old_x))
         j_ = self.j_from_y(np.array(old_y)) 
-        new_ij = cart.remap_coordinates(zip(i_,j_),self.cartogram,self.xsize,self.ysize)
+        new_ij = cart.remap_coordinates(zip(i_,j_),
+                                        self.cartogram,
+                                        self.xsize,
+                                        self.ysize,
+                                        )
         new_x = np.array([self.x_from_i(ij[0]) for ij in new_ij ])
         new_y = np.array([self.y_from_j(ij[1]) for ij in new_ij ])
             
@@ -243,7 +247,8 @@ class WardCartogram():
                 new_ward = new_ward.buffer(0)
 
             new_wards.append(new_ward)
-            new_ward_density.append(self.ward_density[iward] * ward.area / new_ward.area)
+            if self.ward_density is not None:
+                new_ward_density.append(self.ward_density[iward] * ward.area / new_ward.area)
 
             if verbose:
                 bar.update(iward)
@@ -304,7 +309,10 @@ class WardCartogram():
         if ward_colors is None and not show_density_matrix:
             ward_colors = 'log_density'
         elif show_density_matrix:
-            ward_colors = 'None'
+            ward_colors = list(mpl.colors.to_rgba(bg_color))
+            ward_colors[-1] = 0.
+            bg_color = list(mpl.colors.to_rgba(bg_color))
+            bg_color[-1] = 0.
 
         if mpl.colors.is_color_like(ward_colors):
             color = lambda iward: ward_colors
@@ -336,7 +344,7 @@ class WardCartogram():
         patch = PolygonPatch(bbox,
                              facecolor = bg_color,
                              edgecolor = 'None',
-                             alpha = 1,
+                             #alpha = 1,
                              lw = 0,
                             )
         ax.add_patch(patch)
@@ -351,14 +359,14 @@ class WardCartogram():
                                 )
             ax.add_patch(patch)
 
-
         # get bounds of map
         x_, y_ = self.get_ward_bounds(bbox)
 
         if show_density_matrix:
             x_b, y_b = self.get_ward_bounds(self.big_bbox)
             ax.imshow(self.density_matrix.T,
-                      extent=x_b+y_b)
+                      extent=x_b+y_b,
+                      origin='lower')
         else:
             ax.set_aspect('equal')
 
@@ -368,7 +376,7 @@ class WardCartogram():
             patch = PolygonPatch(ward,
                                  facecolor = fc,
                                  edgecolor = edge_color(ward_id),
-                                 alpha = 1,
+                                 #alpha = 1,
                                  lw = 0.5,
                                 )
             ax.add_patch(patch)
@@ -378,6 +386,8 @@ class WardCartogram():
             
         if generate_figure:
             return fig, ax
+        else:
+            return ax
 
 if __name__ == "__main__":
         A = Polygon([ 
