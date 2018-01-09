@@ -1,5 +1,24 @@
 import numpy as np
 import matplotlib.pyplot as pl
+
+def fill_matrix(A,i,j,new_val=1.):
+    index_list = [(i,j)]
+    val = A[i,j]
+    x_, y_ = A.shape
+
+    while len(index_list) > 0:
+        i,j = index_list.pop()
+        A[i,j] = new_val
+        if i+1 < x_ and A[i+1,j] == val:
+            index_list.append((i+1,j))
+        if j+1 < y_ and A[i,j+1] == val:
+            index_list.append((i,j+1))
+        if j-1 >= 0 and A[i,j-1] == val:
+            index_list.append((i,j-1))
+        if i-1 >= 0 and A[i-1,j] == val:
+            index_list.append((i-1,j))            
+
+    
         
 def savefig_marginless(fn,fig,ax,**kwargs):
     ax.set_axis_off()

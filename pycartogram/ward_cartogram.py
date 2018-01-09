@@ -154,8 +154,8 @@ class WardCartogram():
         
     def cast_density_to_matrix(self,verbose=False):
 
-        min_density = np.min(self.ward_density)
-        #offset_density = min_density / 10. # this is taken care of in the original code
+        min_density = np.min(self.ward_density[self.ward_density>0.])
+        offset_density = min_density / 10.
         density = np.zeros((self.xsize,self.ysize),dtype=float)
 
         if verbose:
@@ -184,9 +184,9 @@ class WardCartogram():
                     if ward.contains(this_point):
                         density[i,j] = self.ward_density[iward]
 
-                        #this is taken care of in the original code
-                        #if density[i,j] == 0.:
-                        #    density[i,j] = offset_density                      
+                        if self.ward_density[iward] == 0.:
+                            density[i,j] = offset_density                      
+                            #print("set offset density", offset_density)
             if verbose:
                 bar.update(iward)
 
@@ -413,7 +413,7 @@ if __name__ == "__main__":
                     ])
 
         wards = [A,B,C]
-        ward_population = [2.,20.,200.]
+        ward_population = [0.,2.,20.]
 
         carto = WardCartogram(wards=wards,
                               ward_density=ward_population,
@@ -429,10 +429,10 @@ if __name__ == "__main__":
         #print carto.big_bbox
 
         carto.plot(show_new_wards=False,
-                          #show_density_matrix=True
-                   ward_colors = [0.3,0.5,0.8],
-                   edge_colors = 'k',
-                   bg_color = 'k',
+                          show_density_matrix=True
+                   #ward_colors = [0.3,0.5,0.8],
+                   #edge_colors = 'k',
+                   #bg_color = 'k',
                           )
         fig, ax = carto.plot(show_new_wards=True,
                    edge_colors = 'k'

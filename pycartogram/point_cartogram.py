@@ -12,6 +12,7 @@ from pycartogram.tools import *
 from pycartogram import WardCartogram
 import visvalingamwyatt as vw
 import scipy.sparse as sprs
+from scipy.spatial import ConvexHull
 
 class PointCartogram(WardCartogram):
 
@@ -37,18 +38,23 @@ class PointCartogram(WardCartogram):
         self.points = points
 
         if self.no_wards_given:
-            xmin = points[:,0].min()
-            xmax = points[:,0].max()
-            ymin = points[:,1].min()
-            ymax = points[:,1].max()
-            x_ = xmin, xmax,
-            y_ = ymin, ymax
-            bbox = Polygon([(x_[0],y_[0]),
-                            (x_[1],y_[0]),
-                            (x_[1],y_[1]),
-                            (x_[0],y_[1]),
-                            ])
-            wards = [bbox]
+            hull = ConvexHull(self.points)
+            whole_shape = Polygon(zip(self.points[hull.vertices,0],
+                                      self.points[hull.vertices,1]))
+            #xmin = points[:,0].min()
+            #xmax = points[:,0].max()
+            #ymin = points[:,1].min()
+            #ymax = points[:,1].max()
+            #x_ = xmin, xmax,
+            #y_ = ymin, ymax
+            #bbox = Polygon([(x_[0],y_[0]),
+            #                (x_[1],y_[0]),
+            #                (x_[1],y_[1]),
+            #                (x_[0],y_[1]),
+            #                ])
+            #wards = [bbox]
+            wards = [whole_shape]
+            self.no_wards_given = False
 
         WardCartogram.__init__(self,
                                wards = wards,
@@ -59,6 +65,32 @@ class PointCartogram(WardCartogram):
                                y_raster_size = y_raster_size,
                                threshold_for_polygon_coarse_graining = threshold_for_polygon_coarse_graining,
                               )
+
+    def _get_whole_shape_matrix(self,verbose=False):
+        A = np.zeros((self.xsize,self.ysize))
+        distance = self.whole_shape.length
+        n_tiles = distance / self.tile_size* 2
+        interpolation_values = np.linspace(0,1,n_tiles)
+        matrix_x = np.zeros_like(interpolation_values)
+        matrix_y = np.zeros_like(interpolation_values)
+        boundary = sgeom.LineString(self.whole_shape.boundary)
+        for i, ival in enumerate(interpolation_values):
+            p = boundary.interpolate(ival,normalized=True)
+            matrix_x[i] = p.x
+            matrix_y[i] = p.y
+        
+        i = np.array(self.i_from_x(matrix_x),dtype=int)
+        j = np.array(self.j_from_y(matrix_y),dtype=int)
+        A[i,j] = 1.
+        point_within = self.whole_shape.centroid
+        fill_matrix(A,
+                    int(self.i_from_x(point_within.x)),
+                    int(self.j_from_y(point_within.y))
+                )
+        #pl.figure()
+        #pl.imshow(A.T,origin='lower')
+        #pl.show()
+        return A
 
     def cast_density_to_matrix(self,verbose = False):
 
@@ -85,6 +117,12 @@ class PointCartogram(WardCartogram):
                 bar.update(point_id)
 
         mean_density = np.mean(density[density>0.])
+
+        min_density = np.min(density[density>0.])
+        points_within_shape = self._get_whole_shape_matrix()
+        offset_density = min_density / 10.
+        density[np.where(np.logical_and(density==0.,points_within_shape==1.))] = offset_density
+
         density[density==0.] = mean_density
 
         self.density_matrix = density 
@@ -129,9 +167,9 @@ class PointCartogram(WardCartogram):
                  ax = ax,                    
                  show_density_matrix = show_density_matrix,
                  show_new_wards = show_new_points,
-                 ward_colors = color,
-                 bg_color = color,
-                 edge_colors = color,
+                 ward_colors = 'None',
+                 bg_color = 'None',
+                 edge_colors = 'None',
                  outline_whole_shape = False,
                  use_new_density = use_new_density,
              )
@@ -219,14 +257,15 @@ if __name__ == "__main__":
                 points[i,0] *= 3
 
         carto = PointCartogram(points,
-                               wards=wards,
+                               #wards=wards,
                                margin_ratio=0.5,
-                               x_raster_size=32,
-                               y_raster_size=16,
+                               x_raster_size=128,
+                               y_raster_size=64,
                               )
 
         density_matrix = carto.cast_density_to_matrix(True)
-        fig, ax = carto.plot_points(show_density_matrix=True,show_new_points=False)
+        #fig, ax = carto.plot_points(show_density_matrix=True,show_new_points=False,show_wards=True)
+        fig, ax = carto.plot_points(show_new_points=False)
         #x,y = carto.get_ward_bounds(carto.big_bbox)
         #pl.imshow(density_matrix.T,extent=x+y,origin='lower')
         #carto.compute_cartogram((True))
