@@ -41,18 +41,6 @@ class PointCartogram(WardCartogram):
             hull = ConvexHull(self.points)
             whole_shape = Polygon(zip(self.points[hull.vertices,0],
                                       self.points[hull.vertices,1]))
-            #xmin = points[:,0].min()
-            #xmax = points[:,0].max()
-            #ymin = points[:,1].min()
-            #ymax = points[:,1].max()
-            #x_ = xmin, xmax,
-            #y_ = ymin, ymax
-            #bbox = Polygon([(x_[0],y_[0]),
-            #                (x_[1],y_[0]),
-            #                (x_[1],y_[1]),
-            #                (x_[0],y_[1]),
-            #                ])
-            #wards = [bbox]
             wards = [whole_shape]
             self.no_wards_given = False
 
@@ -68,64 +56,11 @@ class PointCartogram(WardCartogram):
 
     def _get_whole_shape_matrix(self,verbose=False):
         A = np.zeros((self.xsize,self.ysize))
-        distance = self.whole_shape.length
-        n_tiles = distance / self.tile_size* 2
-        interpolation_values = np.linspace(0,1,n_tiles)
-        matrix_x = np.zeros_like(interpolation_values)
-        matrix_y = np.zeros_like(interpolation_values)
-        boundary = sgeom.LineString(self.whole_shape.boundary)
-        for i, ival in enumerate(interpolation_values):
-            p = boundary.interpolate(ival,normalized=True)
-            matrix_x[i] = p.x
-            matrix_y[i] = p.y
-        
-        i = np.array(self.i_from_x(matrix_x),dtype=int)
-        j = np.array(self.j_from_y(matrix_y),dtype=int)
-        A[i,j] = 1.
-        point_within = self.whole_shape.centroid
-        fill_matrix(A,
-                    int(self.i_from_x(point_within.x)),
-                    int(self.j_from_y(point_within.y))
-                )
-        #pl.figure()
-        #pl.imshow(A.T,origin='lower')
-        #pl.show()
+        self._mark_matrix_with_shape(A,self.whole_shape)
         return A
 
-    def cast_density_to_matrix(self,verbose = False):
-
-        size_x = size_y = self.tile_size
-        xmin = self.big_bbox.bounds[0]
-        ymin = self.big_bbox.bounds[1]
-        
-        # sparse matrix containing a 1 if a grid was visited
-        density = np.zeros((self.xsize,self.ysize))
-
-        # fill matrix with points visited
-        if verbose:
-            bar = progressbar.ProgressBar(
-                max_value = self.points.shape[0] - 1,
-                widgets = [progressbar.SimpleProgress()," ",progressbar.ETA()]
-            )
-        for point_id in xrange(self.points.shape[0]):
-            # show progress
-            x, y = self.points[point_id]
-            x_id = int(np.floor((x - xmin) / size_x))
-            y_id = int(np.floor((y - ymin) / size_y))
-            density[x_id, y_id] += 1
-            if verbose:
-                bar.update(point_id)
-
-        mean_density = np.mean(density[density>0.])
-
-        min_density = np.min(density[density>0.])
-        points_within_shape = self._get_whole_shape_matrix()
-        offset_density = min_density / 10.
-        density[np.where(np.logical_and(density==0.,points_within_shape==1.))] = offset_density
-
-        density[density==0.] = mean_density
-
-        self.density_matrix = density 
+    def cast_density_to_matrix(self,verbose=False):
+        self.density_matrix = self.cast_points_to_matrix(self.points,verbose)
         return self.density_matrix
 
     def compute(self,verbose=False):
@@ -149,7 +84,7 @@ class PointCartogram(WardCartogram):
              use_new_density = False,
              **kwargs # matplotlib arguments for points
             ):
-        """`
+        """
             ward_colors can be
                 - an iterable container of colors - plot ward face colors according to a provided list
                 - "density" - plot ward face colors proportional to density

@@ -1,24 +1,47 @@
 import numpy as np
 import matplotlib.pyplot as pl
+from shapely.geometry import Polygon, LineString, MultiPolygon, Point
+from shapely.ops import polygonize
+import itertools
 
-def fill_matrix(A,i,j,new_val=1.):
+def pair(list):
+    '''Iterate over pairs in a list -> pair of points '''
+    for i in range(1, len(list)):
+        yield list[i-1], list[i]
+
+def enrich_polygon_with_points(geom,delta):
+    coords = []
+    for seg_start, seg_end in pair(geom.exterior.coords):
+        #line_start = Point(seg_start)
+        #line_end = Point(seg_end)
+        segment = LineString([seg_start,seg_end])
+        n_vals = segment.length / delta
+        if n_vals > 1:
+            interpol_vals = np.linspace(0,1,n_vals)
+            for val in interpol_vals[:-1]:
+                P = segment.interpolate(val,normalized=True)
+                coords.append(P.coords[0])
+    new_geom = Polygon(coords)
+
+    return new_geom
+
+def fill_matrix(A,i,j,new_val=1.,old_val=None):
     index_list = [(i,j)]
-    val = A[i,j]
+    if old_val is None:
+        old_val = A[i,j]
     x_, y_ = A.shape
 
     while len(index_list) > 0:
         i,j = index_list.pop()
         A[i,j] = new_val
-        if i+1 < x_ and A[i+1,j] == val:
+        if i+1 < x_ and A[i+1,j] == old_val:
             index_list.append((i+1,j))
-        if j+1 < y_ and A[i,j+1] == val:
+        if j+1 < y_ and A[i,j+1] == old_val:
             index_list.append((i,j+1))
-        if j-1 >= 0 and A[i,j-1] == val:
+        if j-1 >= 0 and A[i,j-1] == old_val:
             index_list.append((i,j-1))
-        if i-1 >= 0 and A[i-1,j] == val:
+        if i-1 >= 0 and A[i-1,j] == old_val:
             index_list.append((i-1,j))            
-
-    
         
 def savefig_marginless(fn,fig,ax,**kwargs):
     ax.set_axis_off()
@@ -91,4 +114,46 @@ def is_iter(obj):
         return True
     except TypeError, te:
         return False
+
+
+def add_intersection_points_to_wards(wards):
+
+    for ig0, ig1 in itertools.combinations(range(len(wards)),2):
+        
+        g0 = wards[ig0]
+        g1 = wards[ig1]
+        
+        if g0.touches(g1):
+            #border = Ling0.intersection(g1)
+            g0_ring = LineString(list(g0.exterior.coords))
+            g1_ring = LineString(list(g1.exterior.coords))
+            # union of linestring
+            union = g0_ring.union(g1_ring)
+
+            # now if you polygonize, the resulting polygons
+            # carry the coordinates of the intersections
+            result = [ g for g in polygonize(union) ]
+            g0 = result[0]
+            g1 = result[1]
+
+if __name__ == "__main__":
+
+    A = Polygon([ 
+                  (0.,0.),
+                  (1.,0.),
+                  (1.,1.),
+                  (0.,1.), 
+                  (0.,0.),
+                ])
+
+    B = enrich_polygon_with_points(A,0.1)
+
+    fig, ax = pl.subplots(1,2)
+
+    x,y = A.exterior.coords.xy
+    ax[0].plot(x,y,'o')
+    x,y = B.exterior.coords.xy
+    ax[1].plot(x,y,'s')
+
+    pl.show()
 
