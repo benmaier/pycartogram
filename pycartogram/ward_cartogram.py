@@ -9,7 +9,6 @@ import matplotlib.pyplot as pl
 import progressbar
 import cCartogram as cart
 from pycartogram.tools import *
-import visvalingamwyatt as vw
 
 class WardCartogram():
 
@@ -18,10 +17,9 @@ class WardCartogram():
                  ward_density,
                  norm_density=False,
                  margin_ratio = 0.2,
-                 dominant_dimension = 'x',
+                 map_orientation = 'landscape',
                  x_raster_size = 1024,
                  y_raster_size = 768,
-                 threshold_for_polygon_coarse_graining = None,
                  ):
         """
         wards:        list of wards as shapely.Polygon
@@ -29,10 +27,6 @@ class WardCartogram():
         norm_density: if this value is 'True' the ward_density will be normed by area (default: False)
         """
 
-        if threshold_for_polygon_coarse_graining is not None:
-            self.wards = self._coarse_grain_wards(wards,threshold_for_polygon_coarse_graining)
-        else:
-            self.wards = wards
         self.ward_density = ward_density
 
         add_intersection_points_to_wards(wards)
@@ -46,7 +40,7 @@ class WardCartogram():
 
         self.compute_bounding_box(
             margin_ratio = margin_ratio,
-            dominant_dimension = dominant_dimension,
+            map_orientation = map_orientation,
             x_raster_size = x_raster_size,
             y_raster_size = y_raster_size,
             )
@@ -54,18 +48,9 @@ class WardCartogram():
         self.density_matrix = None
         self.cartogram = None
 
-    def _coarse_grain_wards(self,wards,th):
-        new_wards = []
-        for ward in wards:
-            coo = ward.exterior.coords.xy
-            new_coo = vw.Simplifier(zip(*coo)).simplify(threshold=th)
-            new_ward = Polygon(new_coo)
-            new_wards.append(new_ward)
-        return new_wards
-
     def _mark_matrix_with_shape(self,A_,shape,new_val=1.,old_val=None):
         distance = shape.length
-        n_tiles = distance / self.tile_size* 2
+        n_tiles = distance / self.tile_size * 10
         interpolation_values = np.linspace(0,1,n_tiles)
         matrix_x = np.zeros_like(interpolation_values)
         matrix_y = np.zeros_like(interpolation_values)
@@ -168,7 +153,7 @@ class WardCartogram():
     def compute_bounding_box(
             self,
             margin_ratio = 0.1,
-            dominant_dimension = 'x',
+            map_orientation = 'landscape',
             x_raster_size = 1024,
             y_raster_size = 768,
             ):
@@ -176,7 +161,7 @@ class WardCartogram():
         self.xsize = x_raster_size
         self.ysize = y_raster_size
 
-        use_width = dominant_dimension == 'x'
+        use_width = map_orientation == 'landscape'
 
         x_, y_ = self.get_ward_bounds()
 
@@ -279,10 +264,18 @@ class WardCartogram():
     def cast_density_to_matrix(self,verbose=False,set_boundary_to='mean',**kwargs):
 
         ward_dens =  np.array(self.ward_density)
-
-        min_density = np.min(ward_dens[ward_dens>0.])
-        mean_density = np.mean(ward_dens[ward_dens>0.])
-        offset_density = min_density
+        nnz = ward_dens[ward_dens>0.]
+        min_density = np.min(nnz)
+        mean_density = np.mean(nnz)
+        ratio_of_nonzero_values = len(nnz) / float(len(ward_dens))
+        offset_density = ratio_of_nonzero_values * min_density
+        #print("number of nnz density values", len(nnz))
+        #print("ratio of nnz density values", ratio_of_nonzero_values)
+        #print( offset_density
+        #if len(nnz) < len(ward_dens) / 10:
+        #    offset_density = 0.005*min_density
+        #else:
+        #    offset_density = min_density
         #print("offset density", offset_density)
         ward_dens[ward_dens==0.] = offset_density
         density = np.zeros((self.xsize,self.ysize),dtype=float)

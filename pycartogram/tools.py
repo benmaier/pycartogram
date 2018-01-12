@@ -3,24 +3,26 @@ import matplotlib.pyplot as pl
 from shapely.geometry import Polygon, LineString, MultiPolygon, Point
 from shapely.ops import polygonize
 import itertools
+import visvalingamwyatt as vw
 
-def pair(list):
-    '''Iterate over pairs in a list -> pair of points '''
-    for i in range(1, len(list)):
-        yield list[i-1], list[i]
+def pair_iterate(l):
+    for i in range(1,len(l)):
+        yield l[i-1], l[i]
 
 def enrich_polygon_with_points(geom,delta):
     coords = []
-    for seg_start, seg_end in pair(geom.exterior.coords):
+    for seg_start, seg_end in pair_iterate(geom.exterior.coords):
         #line_start = Point(seg_start)
         #line_end = Point(seg_end)
         segment = LineString([seg_start,seg_end])
         n_vals = segment.length / delta
         if n_vals > 1:
-            interpol_vals = np.linspace(0,1,n_vals)
+            interpol_vals = np.linspace(0,1,n_vals+1)
             for val in interpol_vals[:-1]:
                 P = segment.interpolate(val,normalized=True)
                 coords.append(P.coords[0])
+        else:
+            coords.append(seg_start)
     new_geom = Polygon(coords)
 
     return new_geom
@@ -54,8 +56,8 @@ def savefig_marginless(fn,fig,ax,**kwargs):
     pad_inches = 0,**kwargs)
 
 def scale(hist,
-                     new_min=0.,
-                     new_max=.9,
+                     new_min=0.2,
+                     new_max=0.9,
                      take_inverse=False,
                      replace_nan = True,
                      get_nan_min_max = False
@@ -71,8 +73,6 @@ def scale(hist,
         log_hist[np.isnan(log_hist)] = nan_min - 1
     min_ = nan_min - 1
     max_ = nan_max
-    new_min = 0.
-    new_max = 0.9
     intensity = lambda x: (x-min_)/ (max_-min_) * (new_max-new_min) + new_min
     if not get_nan_min_max:
         return log_hist, intensity
@@ -80,7 +80,7 @@ def scale(hist,
         return log_hist, intensity, nan_min, nan_max
 
 def logify_and_scale(hist,
-                     new_min=0.,
+                     new_min=.2,
                      new_max=.9,
                      take_inverse=False,
                      replace_nan = True,
@@ -100,33 +100,38 @@ def logify_and_scale(hist,
         log_hist[np.isnan(log_hist)] = nan_min - 1
     min_ = nan_min - 1
     max_ = nan_max
-    new_min = 0.
-    new_max = 0.9
     intensity = lambda x: (x-min_)/ (max_-min_) * (new_max-new_min) + new_min
     if not get_nan_min_max:
         return log_hist, intensity
     else:
         return log_hist, intensity, nan_min, nan_max
 
+def coarse_grain_wards(self,wards,th):
+    new_wards = []
+    for ward in wards:
+        coo = ward.exterior.coords.xy
+        new_coo = vw.Simplifier(zip(*coo)).simplify(threshold=th)
+        new_ward = Polygon(new_coo)
+        new_wards.append(new_ward)
+    return new_wards
+
 def is_iter(obj):
     try:
-        some_object_iterator = iter(obj)
+        _ = iter(obj)
         return True
-    except TypeError, te:
+    except TypeError as e:
         return False
 
 
 def add_intersection_points_to_wards(wards):
 
-    for ig0, ig1 in itertools.combinations(range(len(wards)),2):
-        
-        g0 = wards[ig0]
-        g1 = wards[ig1]
+    for g0, g1 in itertools.combinations(wards,2):
         
         if g0.touches(g1):
-            #border = Ling0.intersection(g1)
+
             g0_ring = LineString(list(g0.exterior.coords))
             g1_ring = LineString(list(g1.exterior.coords))
+
             # union of linestring
             union = g0_ring.union(g1_ring)
 
@@ -154,6 +159,8 @@ if __name__ == "__main__":
     ax[0].plot(x,y,'o')
     x,y = B.exterior.coords.xy
     ax[1].plot(x,y,'s')
+
+
 
     pl.show()
 
