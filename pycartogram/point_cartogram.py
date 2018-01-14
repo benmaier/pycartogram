@@ -21,10 +21,9 @@ class PointCartogram(WardCartogram):
                  wards = None,
                  norm_density=False,
                  margin_ratio = 0.2,
-                 dominant_dimension = 'x',
+                 map_orientation = 'landscape',
                  x_raster_size = 1024,
                  y_raster_size = 768,
-                 threshold_for_polygon_coarse_graining = None,
                  ):
         """
         wards:        list of wards as shapely.Polygon
@@ -48,10 +47,9 @@ class PointCartogram(WardCartogram):
                                wards = wards,
                                ward_density = None,
                                margin_ratio = margin_ratio,
-                               dominant_dimension = dominant_dimension,
+                               map_orientation = map_orientation,
                                x_raster_size = x_raster_size,
                                y_raster_size = y_raster_size,
-                               threshold_for_polygon_coarse_graining = threshold_for_polygon_coarse_graining,
                               )
 
     def _get_whole_shape_matrix(self,verbose=False):

@@ -30,6 +30,7 @@ class WardCartogram():
         self.ward_density = ward_density
 
         add_intersection_points_to_wards(wards)
+        self.wards = wards
 
         if norm_density:
             self.ward_density = list(ward_density)
@@ -360,16 +361,22 @@ class WardCartogram():
         if verbose:
             bar = progressbar.ProgressBar(
                 max_value = locations.shape[0] - 1,
-                widgets = [progressbar.SimpleProgress()," ",progressbar.ETA(), " casting points to matrix..."]
+                widgets = [ progressbar.SimpleProgress()," ",
+                            progressbar.ETA(), 
+                            " casting points to matrix..."
+                          ]
             )
+
         for point_id in xrange(locations.shape[0]):
             # show progress
             x, y = locations[point_id]
             x_id = int(np.floor((x - xmin) / size_x))
             y_id = int(np.floor((y - ymin) / size_y))
-            density[x_id, y_id] += 1
-            if verbose:
-                bar.update(point_id)
+            if x_id>=0 and x_id < self.xsize and\
+               y_id>=0 and y_id < self.ysize:
+                density[x_id, y_id] += 1
+                if verbose:
+                    bar.update(point_id)
 
         if replace_value_zero:
             mean_density = np.mean(density[density>0.])
@@ -411,7 +418,10 @@ class WardCartogram():
                                             )
         return self.cartogram
 
-    def transform_wards(self,verbose=False,ignore_self_intersection=True):
+    def transform_wards(self,
+                        verbose=False,
+                        ignore_self_intersection=True,
+                        enrich_wards_with_points=True):
         new_wards = []
         new_ward_density = [] 
 
@@ -422,8 +432,11 @@ class WardCartogram():
             )
 
         for iward,ward in enumerate(self.wards):
-            temp_ward = enrich_polygon_with_points(ward,self.tile_size)
-            old_x, old_y = temp_ward.exterior.coords.xy
+            if enrich_wards_with_points:
+                temp_ward = enrich_polygon_with_points(ward,self.tile_size)
+                old_x, old_y = temp_ward.exterior.coords.xy
+            else:
+                old_x, old_y = ward.exterior.coords.xy
             #number_of_points_old = len(old_x)
             #new_number_of_points = 3*number_of_points_old
             #old_x = []
@@ -507,6 +520,9 @@ class WardCartogram():
                     bar.update(i)
         # dirty hack ends here
 
+        # delete holes (construct new Polygon from exterior)
+        poly1 = Polygon(poly1.exterior.coords)
+
         self.new_whole_shape = poly1
         x_, y_ = self.get_ward_bounds(self.new_whole_shape)
         self.new_bbox = Polygon([(x_[0],y_[0]),
@@ -537,7 +553,10 @@ class WardCartogram():
              bg_color = 'w',
              edge_colors = None,
              outline_whole_shape = True,
+             whole_shape_color = [0.05,0.,0.],
+             whole_shape_linewidth = 1,
              use_new_density = False,
+             intensity_range = [0.1,0.9]
             ):
         """
             ward_colors can be
@@ -579,9 +598,9 @@ class WardCartogram():
             else:
                 density = self.ward_density
             if ward_colors == 'density':
-                values, intensity = scale(self.ward_density)
+                values, intensity = scale(self.ward_density,new_min=intensity_range[0],new_max=intensity_range[1])
             else:
-                values, intensity = logify_and_scale(self.ward_density)
+                values, intensity = logify_and_scale(self.ward_density,new_min=intensity_range[0],new_max=intensity_range[1])
 
             if bg_color in ('w','white'):
                 color = lambda iward: [1, 1-intensity(values[iward]), 1-intensity(values[iward])]
@@ -606,16 +625,6 @@ class WardCartogram():
                             )
         ax.add_patch(patch)
             
-        # set whole shape background
-        if outline_whole_shape:
-            patch = PolygonPatch(whole,
-                                 facecolor = 'None',
-                                 edgecolor = [0.25,0.25,0.25],
-                                 alpha = 1,
-                                 lw = 2,
-                                )
-            ax.add_patch(patch)
-
         # get bounds of map
         x_, y_ = self.get_ward_bounds(bbox)
 
@@ -635,6 +644,16 @@ class WardCartogram():
                                  edgecolor = edge_color(ward_id),
                                  #alpha = 1,
                                  lw = 0.5,
+                                )
+            ax.add_patch(patch)
+
+        # set whole shape background
+        if outline_whole_shape:
+            patch = PolygonPatch(whole,
+                                 facecolor = 'None',
+                                 edgecolor = whole_shape_color,
+                                 alpha = 1,
+                                 lw = whole_shape_linewidth,
                                 )
             ax.add_patch(patch)
 
