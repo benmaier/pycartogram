@@ -1,0 +1,1 @@
+This polygon data of Berlin's zip code areas is a simplified derivative of https://github.com/berlinermorgenpost/Berlin-Geodaten . It is licensed under Public Domain. Data is given in projection WGS84.
