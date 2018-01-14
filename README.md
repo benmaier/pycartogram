@@ -8,7 +8,7 @@ This package does not work without [cCartogram](https://github.com/benmaier/cCar
 
 ## Examples
 
-Find an example below.
+Find an example below and more in subfolder `sandbox`.
 
 ```python
 import matplotlib.pyplot as pl
