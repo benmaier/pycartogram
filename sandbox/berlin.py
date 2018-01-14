@@ -72,21 +72,24 @@ carto.plot(show_new_wards=False,
            show_density_matrix=False,
            ward_colors = 'w',
            ax=ax[0,0])
-ax[0,0].set_title('')
+ax[0,0].set_title('location data')
 
 ax[0,0].plot(points[:,0],points[:,1],'.',c='g',ms=0.5)
 
 carto.plot(show_new_wards=False,
            show_density_matrix=True,
            ax=ax[0,1])
+ax[0,1].set_title('density matrix binned by wards')
 
 carto.plot(show_new_wards=False,
            ax=ax[1,0])
+ax[1,0].set_title('ward bins as polygons')
 
 carto.plot(
         ward_colors = np.random.random((len(berlin_wards),3)),
         edge_colors = 'k',
         ax=ax[1,1])
+ax[1,1].set_title('cartogram after ward binning')
 
 carto_point = pycartogram.PointCartogram(
             points = points,
@@ -105,6 +108,7 @@ carto_point.plot_points(
            ms = 0.2,
            mfc = 'g'
            )
+ax[0,2].set_title('density matrix binned in pixels')
 
 carto_point.compute(verbose=True)
 carto_point.transform_wards(verbose=True)
@@ -113,7 +117,9 @@ carto_point.plot(
         ward_colors = np.random.random((len(berlin_wards),3)),
         edge_colors = 'k',
         ax=ax[1,2])
+ax[1,2].set_title('cartogram after pixel binning')
 
+fig.savefig('./berlin.png')
 
 pl.show()
 
