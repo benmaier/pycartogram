@@ -48,6 +48,7 @@ class WardCartogram():
 
         self.density_matrix = None
         self.cartogram = None
+        self.ward_matrix_coordinates = None
 
     def _mark_matrix_with_shape(self,A_,shape,new_val=1.,old_val=None):
         distance = shape.length
@@ -262,7 +263,7 @@ class WardCartogram():
         self.density_matrix = density
         return self.density_matrix
 
-    def cast_density_to_matrix(self,verbose=False,set_boundary_to='mean',**kwargs):
+    def cast_density_to_matrix(self,verbose=False,set_boundary_to='mean',ward_matrix_coordinates=[],**kwargs):
 
         ward_dens =  np.array(self.ward_density)
         nnz = ward_dens[ward_dens>0.]
@@ -293,29 +294,43 @@ class WardCartogram():
             )
         #offset_i = []
         #offset_j = []
+        if len(ward_matrix_coordinates) == len(self.wards):
+            self.ward_matrix_coordinates = ward_matrix_coordinates
 
-        for iward, ward in enumerate(self.wards):
+        no_matrix_coordinates_given = self.ward_matrix_coordinates is None
 
-            imin,imax,jmin,jmax = self._get_matrix_coordinate_bounds(ward)
+        if no_matrix_coordinates_given:
 
-            #if verbose:
-            #    print "ward", iward, "has matrix bounds", imin, imax, jmin, jmax
+            self.ward_matrix_coordinates = [[] for ward in self.wards ]
 
-            for i in range(imin,imax):
-                for j in range(jmin,jmax):
+            for iward, ward in enumerate(self.wards):
 
-                    this_point = sgeom.Point(self.x_from_i(i),
-                                             self.y_from_j(j))
+                imin,imax,jmin,jmax = self._get_matrix_coordinate_bounds(ward)
 
-                    if ward.contains(this_point):
-                        density[i,j] = ward_dens[iward]
+                #if verbose:
+                #    print "ward", iward, "has matrix bounds", imin, imax, jmin, jmax
 
-                        #if self.ward_density[iward] == 0.:
-                        #    offset_i.append(i)
-                        #    offset_j.append(j)
-                        #    #print("set offset density", offset_density)
-            if verbose:
-                bar.update(iward)
+                for i in range(imin,imax):
+                    for j in range(jmin,jmax):
+
+                        this_point = sgeom.Point(self.x_from_i(i),
+                                                 self.y_from_j(j))
+
+                        if ward.contains(this_point):
+                            density[i,j] = ward_dens[iward]
+                            self.ward_matrix_coordinates[iward].append((i,j))
+
+                            #if self.ward_density[iward] == 0.:
+                            #    offset_i.append(i)
+                            #    offset_j.append(j)
+                            #    #print("set offset density", offset_density)
+                if verbose:
+                    bar.update(iward)
+        else:
+            for iward, ward in enumerate(self.wards):
+                for i, j in self.ward_matrix_coordinates[iward]:
+                    density[i,j] = ward_dens[iward]
+                            
 
         #offset_i = np.array(offset_i)
         #offset_j = np.array(offset_j)
