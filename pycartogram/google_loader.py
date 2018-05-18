@@ -8,6 +8,7 @@ from descartes.patch import PolygonPatch
 from shapely.ops import cascaded_union
 from datetime import date
 from datetime import datetime
+from pycartogram.tools import *
 
 class GoogleShapeProject():
 
@@ -65,7 +66,7 @@ class GoogleShapeProject():
         # load the google data
         with open(google_file) as f:
             google_data = json.load(f)
-            google_data = google_data[u'locations']
+            google_data = google_data['locations']
 
 
         # extract the relevant google data
@@ -111,5 +112,67 @@ class GoogleShapeProject():
                         va = va,
                         fontsize='small'
                        )       
+
+    def export_json(self,carto,additional_data=None,export_rec_attributes=[]):
+        
+        export = { 
+                   'attributes': [],
+                   'domain':{ 'x': (self.orig_bbox.bounds[0],self.orig_bbox.bounds[2]),
+                              'y': (self.orig_bbox.bounds[1],self.orig_bbox.bounds[3
+]),
+                            },
+                 }
+
+        export['original'] = carto.old_ward_coords
+        export['new'] = carto.new_ward_coords
+
+        for iward in range(len(self.wards)):
+            export['attributes'].append({})
+            for attr in export_rec_attributes:
+                export['attributes'][-1][attr] = self.records[iward].attributes[attr]
+
+        if additional_data is not None:
+            export.update(additional_data)
+
+        return export
+        
+
+    def _export_json(self,new_wards,delta,old_wards=None,additional_data=None,export_rec_attributes=[]):
+        
+        export = { 
+                   'attributes': [],
+                   'domain':{ 'x': (self.orig_bbox.bounds[0],self.orig_bbox.bounds[2]),
+                              'y': (self.orig_bbox.bounds[1],self.orig_bbox.bounds[3
+]),
+                            },
+                 }
+
+        no_old_wards_given = old_wards is None
+
+        if no_old_wards_given:
+            old_wards = self.wards
+
+        enriched_wards = []
+        for iward, ward in enumerate(old_wards):
+            new_ward = enrich_polygon_with_points(ward,delta)
+            n_points = len(new_ward.exterior.coords.xy[0])
+            enriched_wards.append(enrich_polygon_to_n_points(new_ward,n_points))
+
+        export['original'] = get_json(enriched_wards)
+        export['new'] = get_json(new_wards)
+
+        for iward in range(len(self.wards)):
+            export['attributes'].append({})
+            for attr in export_rec_attributes:
+                export['attributes'][-1][attr] = self.records[iward].attributes[attr]
+
+        if additional_data is not None:
+            export.update(additional_data)
+
+        return export
+        
+
+
+        
 
         

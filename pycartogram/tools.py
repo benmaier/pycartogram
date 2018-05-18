@@ -27,6 +27,42 @@ def enrich_polygon_with_points(geom,delta):
 
     return new_geom
 
+def enrich_polygon_to_n_points(geom,n_total):
+
+    n_points = len(geom.exterior.coords.xy[0])
+    n_segments = n_points - 1
+    new_points = n_total - n_points
+    if new_points <= 0:
+        return geom
+
+    # fill segments up with new points
+    points_per_segment = [ 0 for i in range(n_segments) ]
+    current_segment = 0
+    while new_points > 0:
+        points_per_segment[current_segment % n_segments] += 1
+        new_points -= 1
+        current_segment += 1
+
+    coords = []
+    current_segment = 0
+    for seg_start, seg_end in pair_iterate(geom.exterior.coords):
+        #line_start = Point(seg_start)
+        #line_end = Point(seg_end)
+        segment = LineString([seg_start,seg_end])
+        n_vals = points_per_segment[current_segment] + 1 # +1 because of the beginning
+        if n_vals > 1:
+            interpol_vals = np.linspace(0,1,n_vals+1)
+            for val in interpol_vals[:-1]:
+                P = segment.interpolate(val,normalized=True)
+                coords.append(P.coords[0])
+        else:
+            coords.append(seg_start)
+        current_segment += 1
+
+    new_geom = Polygon(coords)
+
+    return new_geom
+
 def fill_matrix(A,i,j,new_val=1.,old_val=None):
     index_list = [(i,j)]
     if old_val is None:
@@ -110,7 +146,7 @@ def coarse_grain_wards(self,wards,th):
     new_wards = []
     for ward in wards:
         coo = ward.exterior.coords.xy
-        new_coo = vw.Simplifier(zip(*coo)).simplify(threshold=th)
+        new_coo = vw.Simplifier(list(zip(*coo))).simplify(threshold=th)
         new_ward = Polygon(new_coo)
         new_wards.append(new_ward)
     return new_wards
@@ -121,6 +157,20 @@ def is_iter(obj):
         return True
     except TypeError as e:
         return False
+
+def get_json(wards):
+
+    polygons = []
+    for iward, ward in enumerate(wards):
+        #current_wards = ward
+
+        #for w in current_wards:
+        this_poly = []
+        for x, y in ward.exterior.coords:
+            this_poly.append([x,y])
+        polygons.append(this_poly)
+    return polygons
+
 
 def get_polygon_network(wards):
 

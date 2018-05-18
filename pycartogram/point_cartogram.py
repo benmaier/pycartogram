@@ -1,4 +1,4 @@
-from __future__ import print_function
+
 import numpy as np
 import shapely.geometry as sgeom
 from shapely.ops import cascaded_union
@@ -38,8 +38,8 @@ class PointCartogram(WardCartogram):
 
         if self.no_wards_given:
             hull = ConvexHull(self.points)
-            whole_shape = Polygon(zip(self.points[hull.vertices,0],
-                                      self.points[hull.vertices,1]))
+            whole_shape = Polygon(list(zip(self.points[hull.vertices,0],
+                                      self.points[hull.vertices,1])))
             wards = [whole_shape]
             self.no_wards_given = False
 

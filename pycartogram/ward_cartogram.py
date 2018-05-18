@@ -1,4 +1,4 @@
-from __future__ import print_function
+
 import numpy as np
 import shapely.geometry as sgeom
 from shapely.ops import cascaded_union, unary_union, polygonize
@@ -367,7 +367,7 @@ class WardCartogram():
                           ]
             )
 
-        for point_id in xrange(locations.shape[0]):
+        for point_id in range(locations.shape[0]):
             # show progress
             x, y = locations[point_id]
             x_id = int(np.floor((x - xmin) / size_x))
@@ -390,13 +390,12 @@ class WardCartogram():
 
         return density
 
-
     def transform_coords(self,x,y):
         old_x = x
         old_y = y
         i_ = self.i_from_x(np.array(old_x))
         j_ = self.j_from_y(np.array(old_y)) 
-        new_ij = cart.remap_coordinates(zip(i_,j_),
+        new_ij = cart.remap_coordinates(list(zip(i_,j_)),
                                         self.cartogram,
                                         self.xsize,
                                         self.ysize,
@@ -421,9 +420,17 @@ class WardCartogram():
     def transform_wards(self,
                         verbose=False,
                         ignore_self_intersection=True,
-                        enrich_wards_with_points=True):
+                        enrich_wards_with_points=True,
+                        delta_for_enrichment=None):
+
+        if delta_for_enrichment is None:
+            delta_for_enrichment = self.tile_size
+            
         new_wards = []
         new_ward_density = [] 
+
+        self.new_ward_coords = []
+        self.old_ward_coords = []
 
         if verbose:
             bar = progressbar.ProgressBar(
@@ -433,10 +440,12 @@ class WardCartogram():
 
         for iward,ward in enumerate(self.wards):
             if enrich_wards_with_points:
-                temp_ward = enrich_polygon_with_points(ward,self.tile_size)
+                temp_ward = enrich_polygon_with_points(ward,delta_for_enrichment)
                 old_x, old_y = temp_ward.exterior.coords.xy
             else:
                 old_x, old_y = ward.exterior.coords.xy
+
+            self.old_ward_coords.append(list(zip(old_x,old_y)))
             #number_of_points_old = len(old_x)
             #new_number_of_points = 3*number_of_points_old
             #old_x = []
@@ -454,8 +463,9 @@ class WardCartogram():
             i_ = self.i_from_x(np.array(old_x))
             j_ = self.j_from_y(np.array(old_y)) 
 
-            new_ij = cart.remap_coordinates(zip(i_,j_),self.cartogram,self.xsize,self.ysize)
+            new_ij = cart.remap_coordinates(list(zip(i_,j_)),self.cartogram,self.xsize,self.ysize)
             new_coords = [ (self.x_from_i(i), self.y_from_j(j)) for i,j in new_ij]
+            self.new_ward_coords.append(new_coords)
             """
             if iward == 2:
                 x = np.array([ 0.38517325,  0.40859912,  0.43296919,  0.4583215 ,  0.4583215 ,
@@ -478,6 +488,9 @@ class WardCartogram():
                 new_ward = unary_union(mp)
                 #new_ward = new_ward.buffer(0)
                 #for new_ward in polygonize(mls):
+
+            if type(new_ward) == MultiPolygon:
+                new_ward = new_ward.buffer(self.tile_size/250.)
 
             new_wards.append(new_ward)
             if self.ward_density is not None:
