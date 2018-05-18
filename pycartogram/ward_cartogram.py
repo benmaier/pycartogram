@@ -42,8 +42,8 @@ class WardCartogram():
         self.compute_bounding_box(
             margin_ratio = margin_ratio,
             map_orientation = map_orientation,
-            x_raster_size = x_raster_size,
-            y_raster_size = y_raster_size,
+            x_raster_size = int(x_raster_size),
+            y_raster_size = int(y_raster_size),
             )
 
         self.density_matrix = None
@@ -509,7 +509,7 @@ class WardCartogram():
         # where putting all wards at once raises a TopologyException
         try:
             size = 300
-            chunks = [self.new_wards[size*i:size*(i+1)] for i in range(len(self.new_wards)/size + 1)]
+            chunks = [self.new_wards[size*i:size*(i+1)] for i in range(len(self.new_wards)//size + 1)]
             poly1 = unary_union(chunks[0])
             for i,poly2 in enumerate(chunks[1:]):
                 poly1 = unary_union([poly1]+poly2)
