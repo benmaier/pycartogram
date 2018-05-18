@@ -57,6 +57,8 @@ Be sure you have [cCartogram](https://github.com/benmaier/cCartogram) installed.
 Even though `pip` should take care of it, `cCartogram` needs some extra libraries such that 
 `pip` might fail.
 
+Another package needed is [Cartopy](https://github.com/SciTools/cartopy) which requires the C-libraries `geos` and `proj`, which I installed using MacPorts. Installing Cartopy with MacPorts failed during building, which is, I think, related to the fact that the library and include directories of `proj` are not found automatically. I ended up cloning the Cartopy source code repo and manually including the paths `/opt/local/lib/proj49/lib` and `/opt/local/lib/proj49/include` for installation.
+
 To install do
 
     $ sudo pip install ./pycartogram

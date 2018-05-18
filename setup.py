@@ -16,7 +16,7 @@ setup(name='pycartogram',
           'shapely',
           'descartes',
           'cartopy',
-          'progressbar',
+          'progressbar2',
           'visvalingamwyatt',
       ],
       dependency_links=[
