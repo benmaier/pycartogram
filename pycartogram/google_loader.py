@@ -18,6 +18,7 @@ class GoogleShapeProject():
                  shape_source_proj = ccrs.PlateCarree(),
                  google_source_proj = ccrs.PlateCarree(),
                  target_proj = ccrs.UTM('33N'),
+                 minimum_time_as_unix_seconds = 0,
                  ):
 
         # load the single (the first) polygon from 
@@ -73,7 +74,7 @@ class GoogleShapeProject():
         ggl_lon_lat_timestamp = [ ( dat['longitudeE7'] / 1e7,
                                     dat['latitudeE7']  / 1e7,
                                     float(dat['timestampMs']) / 1e3,
-                                  ) for dat in google_data ]
+                                  ) for dat in google_data if float(dat['timestampMs']) / 1e3 > minimum_time_as_unix_seconds ]
 
         # convert google data to our polygon metric
         ggl_utm33n = [ (
