@@ -15,6 +15,7 @@ class GoogleShapeProject():
     def __init__(self,
                  shape_file,
                  google_file,
+                 lon_lat_list = None,
                  shape_source_proj = ccrs.PlateCarree(),
                  google_source_proj = ccrs.PlateCarree(),
                  target_proj = ccrs.UTM('33N'),
@@ -65,39 +66,55 @@ class GoogleShapeProject():
                                  ])
 
         # load the google data
-        with open(google_file) as f:
-            google_data = json.load(f)
-            google_data = google_data['locations']
+        if google_file is not None:
+            with open(google_file) as f:
+                google_data = json.load(f)
+                google_data = google_data['locations']
 
 
-        # extract the relevant google data
-        ggl_lon_lat_timestamp = [ ( dat['longitudeE7'] / 1e7,
-                                    dat['latitudeE7']  / 1e7,
-                                    float(dat['timestampMs']) / 1e3,
-                                  ) for dat in google_data if float(dat['timestampMs']) / 1e3 > minimum_time_as_unix_seconds ]
+            # extract the relevant google data
+            ggl_lon_lat_timestamp = [ ( dat['longitudeE7'] / 1e7,
+                                        dat['latitudeE7']  / 1e7,
+                                        float(dat['timestampMs']) / 1e3,
+                                      ) for dat in google_data if float(dat['timestampMs']) / 1e3 > minimum_time_as_unix_seconds ]
 
-        # convert google data to our polygon metric
-        ggl_utm33n = [ (
-                        sgeom.Point( 
-                               *target_proj.transform_point(
-                                       d[0],
-                                       d[1],
-                                       google_source_proj
-                                    )
-                                   ),
-                        d[2]
-                       ) for d in ggl_lon_lat_timestamp ]
-        # filter all points for relevance (throw away those wich are not
-        # in the berlin bounding box)
-        self.relevant_points = [ d for d in ggl_utm33n if self.orig_bbox.contains(d[0]) ]
-        self.relevant_points_by_hour = [ [] for i in range(24) ]
+            # convert google data to our polygon metric
+            ggl_utm33n = [ (
+                            sgeom.Point( 
+                                   *target_proj.transform_point(
+                                           d[0],
+                                           d[1],
+                                           google_source_proj
+                                        )
+                                       ),
+                            d[2]
+                           ) for d in ggl_lon_lat_timestamp ]
+            # filter all points for relevance (throw away those wich are not
+            # in the berlin bounding box)
+            self.relevant_points = [ d for d in ggl_utm33n if self.orig_bbox.contains(d[0]) ]
+            self.relevant_points_by_hour = [ [] for i in range(24) ]
 
-        # sort by hour of timestamp but also cumulate
-        self.all_relevant_points = []
-        for point, timestamp in self.relevant_points:
-            hour = datetime.fromtimestamp(timestamp).hour
-            self.relevant_points_by_hour[hour].append(point)
-            self.all_relevant_points.append(point)
+            # sort by hour of timestamp but also cumulate
+            self.all_relevant_points = []
+            for point, timestamp in self.relevant_points:
+                hour = datetime.fromtimestamp(timestamp).hour
+                self.relevant_points_by_hour[hour].append(point)
+                self.all_relevant_points.append(point)
+        elif lon_lat_list is not None:
+            ggl_utm33n = [ 
+                            sgeom.Point( 
+                                   *target_proj.transform_point(
+                                           d[0],
+                                           d[1],
+                                           google_source_proj
+                                        )
+                                       )\
+                            for d in lon_lat_list ]
+            # filter all points for relevance (throw away those wich are not
+            # in the berlin bounding box)
+            self.relevant_points = [ d for d in ggl_utm33n if self.orig_bbox.contains(d) ]
+            self.all_relevant_points = self.relevant_points
+            
 
     def label_this(ax,wards,labels,key='PLZ99'):
         for iward, ward in enumerate(wards):
