@@ -50,6 +50,15 @@ class WardCartogram():
         self.cartogram = None
         self.ward_matrix_coordinates = None
 
+    def enrich_wards_with_points(self,
+                                 delta_for_enrichment=None,
+                                 ):
+
+        if delta_for_enrichment is None:
+            delta_for_enrichment = self.tile_size
+
+        self.wards = [ enrich_polygon_with_points(ward,delta_for_enrichment) for ward in self.wards ]
+
     def _mark_matrix_with_shape(self,A_,shape,new_val=1.,old_val=None):
         distance = shape.length
         n_tiles = distance / self.tile_size * 10
