@@ -190,7 +190,7 @@ class WardCartogram():
             margin_y = self.orig_height * margin_ratio
             self.new_height = self.orig_height + 2*margin_y
 
-            self.tile_size = self.new_width / self.ysize
+            self.tile_size = self.new_height / self.ysize
 
             self.new_width = self.tile_size * self.xsize
             margin_x = 0.5 * (self.new_width - self.orig_width)
@@ -455,6 +455,7 @@ class WardCartogram():
 
         self.new_ward_coords = []
         self.old_ward_coords = []
+        self.new_old_wards = []
 
         if verbose:
             bar = progressbar.ProgressBar(
@@ -466,8 +467,10 @@ class WardCartogram():
             if enrich_wards_with_points:
                 temp_ward = enrich_polygon_with_points(ward,delta_for_enrichment)
                 old_x, old_y = temp_ward.exterior.coords.xy
+                self.new_old_wards.append(temp_ward)
             else:
                 old_x, old_y = ward.exterior.coords.xy
+                self.new_old_wards.append(ward)
 
             self.old_ward_coords.append(list(zip(old_x,old_y)))
             #number_of_points_old = len(old_x)
@@ -558,7 +561,8 @@ class WardCartogram():
         # dirty hack ends here
 
         # delete holes (construct new Polygon from exterior)
-        poly1 = Polygon(poly1.exterior.coords)
+        if isinstance(poly1, Polygon):
+            poly1 = Polygon(poly1.exterior.coords)
 
         self.new_whole_shape = poly1
         x_, y_ = self.get_ward_bounds(self.new_whole_shape)
@@ -726,7 +730,7 @@ if __name__ == "__main__":
                     ])
 
         wards = [A,B,C]
-        ward_population = [0.,2.,20.]
+        ward_population = [0.,2.,200.]
 
         points = np.random.random((1000,2))
         points[:,0] *= 3

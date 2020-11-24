@@ -15,7 +15,7 @@ def enrich_polygon_with_points(geom,delta):
         #line_start = Point(seg_start)
         #line_end = Point(seg_end)
         segment = LineString([seg_start,seg_end])
-        n_vals = segment.length / delta
+        n_vals = int(segment.length / delta)
         if n_vals > 1:
             interpol_vals = np.linspace(0,1,n_vals+1)
             for val in interpol_vals[:-1]:
