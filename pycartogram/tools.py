@@ -63,6 +63,59 @@ def enrich_polygon_to_n_points(geom,n_total):
 
     return new_geom
 
+def get_cumulative_relative_exterior_length(geom):
+
+    x, y = geom.exterior.xy
+    length = np.zeros_like(np.array(x))
+    for i in range(1,len(x)):
+        r1 = np.array([ x[i], y[i] ])
+        r0 = np.array([ x[i-1], y[i-1] ])
+        length[i] = np.linalg.norm(r1-r0)
+    length = np.cumsum(length)
+    return length/length[-1]
+
+def match_vertex_count(geom0, geom1):
+
+    n0 = len(geom0.exterior.coords.xy[0])
+    n1 = len(geom1.exterior.coords.xy[0])
+
+    if n0 == n1:
+        return geom0, geom1
+    elif n0 > n1:
+        short_geom = geom1
+        long_geom = geom0
+    else:
+        short_geom = geom0
+        long_geom = geom1
+
+    short_length = get_cumulative_relative_exterior_length(short_geom)
+    long_length = get_cumulative_relative_exterior_length(long_geom)
+
+    matchings = [ np.argmin(np.abs(_short-long_length)) for _short in short_length ]
+    matchings
+
+    coords = []
+    for i, (seg_start, seg_end) in enumerate(pair_iterate(short_geom.exterior.coords)):
+        dpoints = matchings[i+1] - matchings[i]
+        segment = LineString([seg_start,seg_end])
+        n_vals = dpoints + 1
+        interpol_vals = np.linspace(0,1,n_vals)
+        segment = LineString([seg_start,seg_end])
+        if i < len(matchings)-2:
+            interpol_vals = interpol_vals[:-1]
+
+        for val in interpol_vals:
+            P = segment.interpolate(val,normalized=True)
+            coords.append(P.coords[0])
+
+    new_geom = Polygon(coords)
+
+    if n0 > n1:
+        return long_geom, new_geom
+    else:
+        return new_geom, long_geom
+
+
 def fill_matrix(A,i,j,new_val=1.,old_val=None):
     index_list = [(i,j)]
     if old_val is None:

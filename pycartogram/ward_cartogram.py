@@ -339,7 +339,6 @@ class WardCartogram():
             for iward, ward in enumerate(self.wards):
                 for i, j in self.ward_matrix_coordinates[iward]:
                     density[i,j] = ward_dens[iward]
-                            
 
         #offset_i = np.array(offset_i)
         #offset_j = np.array(offset_j)
@@ -348,14 +347,21 @@ class WardCartogram():
         #print("mean_density",mean_density)
         #density[(offset_i,offset_j)] = offset_density                      
         #print("density at first offset", density[offset_i[0],offset_j[0]])
-        
+
         #print("min_density", np.amin(density))
-        if set_boundary_to == 'mean':
-            density[np.where(density==0.)] = mean_density
-        elif set_boundary_to == 'min':
-            density[np.where(density==0.)] = min_density
-        elif set_boundary_to == '10percent_mean':            
-            density[np.where(density==0.)] = 0.1 * mean_density
+        if isinstance(set_boundary_to,str):
+            if set_boundary_to == 'mean':
+                density[np.where(density==0.)] = mean_density
+            elif set_boundary_to == 'min':
+                density[np.where(density==0.)] = min_density
+            elif set_boundary_to.endswith('percent_mean'):
+                factor = float(set_boundary_to.replace('percent_mean','')) / 100
+                density[np.where(density==0.)] = factor * mean_density
+            elif set_boundary_to.endswith('percent_min'):
+                factor = float(set_boundary_to.replace('percent_min','')) / 100
+                density[np.where(density==0.)] = factor * min_density
+        else:
+            density[np.where(density==0.)] = set_boundary_to
         #print("min_density", np.amin(density))
 
         self.density_matrix = density
@@ -377,7 +383,7 @@ class WardCartogram():
         size_x = size_y = self.tile_size
         xmin = self.big_bbox.bounds[0]
         ymin = self.big_bbox.bounds[1]
-        
+
         # sparse matrix containing a 1 if a grid was visited
         density = np.zeros((self.xsize,self.ysize))
 
@@ -426,7 +432,7 @@ class WardCartogram():
                                         )
         new_x = np.array([self.x_from_i(ij[0]) for ij in new_ij ])
         new_y = np.array([self.y_from_j(ij[1]) for ij in new_ij ])
-            
+
         return new_x, new_y
 
     def compute_cartogram(self,offset=0.005,blur=0.,verbose=False,**kwargs):
@@ -449,9 +455,9 @@ class WardCartogram():
 
         if delta_for_enrichment is None:
             delta_for_enrichment = self.tile_size
-            
+
         new_wards = []
-        new_ward_density = [] 
+        new_ward_density = []
 
         self.new_ward_coords = []
         self.old_ward_coords = []
@@ -488,7 +494,7 @@ class WardCartogram():
             #old_x, old_y = new_ward.coords.xy
 
             i_ = self.i_from_x(np.array(old_x))
-            j_ = self.j_from_y(np.array(old_y)) 
+            j_ = self.j_from_y(np.array(old_y))
 
             new_ij = cart.remap_coordinates(list(zip(i_,j_)),self.cartogram,self.xsize,self.ysize)
             new_coords = [ (self.x_from_i(i), self.y_from_j(j)) for i,j in new_ij]
@@ -506,27 +512,27 @@ class WardCartogram():
             """
             ls = LineString(new_coords)
             lr = LineString(ls.coords[:] + ls.coords[:1])
-            if lr.is_simple:
-                new_ward = Polygon(new_coords)
-                #new_ward = new_ward.buffer(0)
-            else:
-                mls = unary_union(lr)
-                mp = MultiPolygon(list(polygonize(mls)))
-                new_ward = unary_union(mp)
-                #new_ward = new_ward.buffer(0)
-                #for new_ward in polygonize(mls):
+            new_ward = Polygon(new_coords)
+            #if lr.is_simple:
+            #    new_ward = Polygon(new_coords)
+            #    #new_ward = new_ward.buffer(0)
+            #else:
+            #    mls = unary_union(lr)
+            #    mp = MultiPolygon(list(polygonize(mls)))
+            #    new_ward = max(multipolygon, key=lambda a: a.area)
+            #    #new_ward = unary_union(mp)
+            #    ##new_ward = new_ward.buffer(0)
+            #    ##for new_ward in polygonize(mls):
 
-            if type(new_ward) == MultiPolygon:
-                new_ward = new_ward.buffer(self.tile_size/250.)
+            #if type(new_ward) == MultiPolygon:
+            #    new_ward = new_ward.buffer(self.tile_size/250.)
 
             new_wards.append(new_ward)
-            if self.ward_density is not None:
-                new_ward_density.append(self.ward_density[iward] * ward.area / new_ward.area)
 
 
             if verbose:
                 bar.update(iward)
-            
+
         self.new_ward_density = np.array(new_ward_density)
         self.new_wards = new_wards
         #self.new_whole_shape = cascaded_union(new_wards)
@@ -587,7 +593,7 @@ class WardCartogram():
         pass
 
     def plot(self,
-             ax = None,                    
+             ax = None,
              show_density_matrix = False,
              show_new_wards = True,
              ward_colors = None,
@@ -665,7 +671,7 @@ class WardCartogram():
                              lw = 0,
                             )
         ax.add_patch(patch)
-            
+
         # get bounds of map
         x_, y_ = self.get_ward_bounds(bbox)
 
@@ -700,7 +706,7 @@ class WardCartogram():
 
         ax.set_xlim(x_)
         ax.set_ylim(y_)
-            
+
         if generate_figure:
             return fig, ax
         else:
