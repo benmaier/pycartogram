@@ -1,3 +1,12 @@
+"""
+Ward-based cartogram generation using the Gastner-Newman algorithm.
+
+This module provides the WardCartogram class for creating density-equalizing
+cartograms from polygon regions (wards) with associated density values.
+
+A cartogram is a map where regions are distorted so their area becomes
+proportional to a variable of interest (e.g., population, GDP).
+"""
 
 import numpy as np
 import shapely.geometry as sgeom
@@ -19,24 +28,67 @@ import progressbar
 import cCartogram as cart
 from tqdm import tqdm
 
-class WardCartogram():
+class WardCartogram:
+    """
+    Create density-equalizing cartograms from polygon regions.
+
+    This class implements the Gastner-Newman diffusion-based cartogram
+    algorithm. Regions (wards) are distorted so their areas become
+    proportional to specified density values.
+
+    Parameters
+    ----------
+    wards : list of shapely.geometry.Polygon
+        Polygon regions to transform.
+    ward_density : list of float
+        Density value for each ward (e.g., population, GDP).
+    norm_density : bool, optional
+        If True, normalize densities by ward area (default: False).
+    margin_ratio : float, optional
+        Margin around wards as fraction of map size (default: 0.2).
+    map_orientation : str, optional
+        'landscape' or 'portrait' (default: 'landscape').
+    x_raster_size : int, optional
+        Width of computation grid in pixels (default: 1024).
+    y_raster_size : int, optional
+        Height of computation grid in pixels (default: 768).
+    threshold_for_polygon_coarse_graining : float, optional
+        If set, simplify polygons using Visvalingam-Whyatt algorithm.
+
+    Attributes
+    ----------
+    wards : list of Polygon
+        Input ward polygons.
+    ward_density : list of float
+        Density values per ward.
+    new_wards : list of Polygon
+        Transformed ward polygons (after calling compute()).
+    density_matrix : numpy.ndarray
+        Rasterized density grid.
+    cartogram : object
+        Computed cartogram transformation.
+
+    Examples
+    --------
+    >>> from shapely.geometry import Polygon
+    >>> wards = [Polygon([(0,0), (1,0), (1,1), (0,1)]),
+    ...          Polygon([(1,0), (2,0), (2,1), (1,1)])]
+    >>> density = [100, 200]  # second ward has twice the density
+    >>> carto = WardCartogram(wards, density, norm_density=True)
+    >>> carto.compute(verbose=True)
+    >>> carto.plot()
+    """
 
     def __init__(self,
                  wards,
                  ward_density,
                  norm_density=False,
-                 margin_ratio = 0.2,
-                 map_orientation = 'landscape',
-                 x_raster_size = 1024,
-                 y_raster_size = 768,
-                 threshold_for_polygon_coarse_graining = None,
-                 ):
-        """
-        wards:        list of wards as shapely.Polygon
-        ward_density: list of density values for the wards
-        norm_density: if this value is 'True' the ward_density will be normed by area (default: False)
-        threshold_for_polygon_coarse_graining: if not None, simplify ward polygons using Visvalingam-Whyatt algorithm
-        """
+                 margin_ratio=0.2,
+                 map_orientation='landscape',
+                 x_raster_size=1024,
+                 y_raster_size=768,
+                 threshold_for_polygon_coarse_graining=None):
+        """Initialize the cartogram with wards and density values."""
 
         self.ward_density = ward_density
 
@@ -65,17 +117,39 @@ class WardCartogram():
         self.cartogram = None
         self.ward_matrix_coordinates = None
 
-    def enrich_wards_with_points(self,
-                                 delta_for_enrichment=None,
-                                 ):
+    def enrich_wards_with_points(self, delta_for_enrichment=None):
+        """
+        Add interpolated points to ward boundaries.
 
+        Increases vertex density for smoother cartogram transformations.
+
+        Parameters
+        ----------
+        delta_for_enrichment : float, optional
+            Maximum distance between vertices. Defaults to tile_size.
+        """
         if delta_for_enrichment is None:
             delta_for_enrichment = self.tile_size
 
-        self.wards = [ enrich_polygon_with_points(ward,delta_for_enrichment) for ward in self.wards ]
+        self.wards = [enrich_polygon_with_points(ward, delta_for_enrichment) for ward in self.wards]
 
     def _mark_matrix_with_shape(self, A_, shape, new_val=1., old_val=None):
-        """Rasterize a polygon onto a matrix using matplotlib.path for speed."""
+        """
+        Rasterize a polygon onto a matrix.
+
+        Uses matplotlib.path.contains_points for fast vectorized computation.
+
+        Parameters
+        ----------
+        A_ : numpy.ndarray
+            Matrix to mark (modified in place).
+        shape : shapely.geometry.Polygon
+            Polygon to rasterize.
+        new_val : float, optional
+            Value to set inside polygon (default: 1.0).
+        old_val : float, optional
+            Unused, kept for API compatibility.
+        """
         # Create grid of all matrix coordinates
         i_coords = np.arange(A_.shape[0])
         j_coords = np.arange(A_.shape[1])
@@ -96,13 +170,25 @@ class WardCartogram():
         # Set values
         A_[inside] = new_val
 
-    def compute_ward_density_from_locations(
-            self,
-            locations,
-            verbose = False,
-            ):
+    def compute_ward_density_from_locations(self, locations, verbose=False):
+        """
+        Compute ward densities from point locations.
 
-        coarse_matrix = self.cast_points_to_matrix(locations,replace_value_zero=False,verbose=verbose)
+        Counts points within each ward and normalizes by area.
+
+        Parameters
+        ----------
+        locations : array-like or list of shapely.geometry.Point
+            Point coordinates as (x, y) pairs or Point objects.
+        verbose : bool, optional
+            Show progress bar (default: False).
+
+        Returns
+        -------
+        numpy.ndarray
+            Computed density for each ward.
+        """
+        coarse_matrix = self.cast_points_to_matrix(locations, replace_value_zero=False, verbose=verbose)
         i, j = np.nonzero(coarse_matrix)
 
         hist = np.zeros((len(self.wards),),dtype=float)
@@ -175,14 +261,27 @@ class WardCartogram():
         return self.ward_density
 
 
-    def compute_bounding_box(
-            self,
-            margin_ratio = 0.1,
-            map_orientation = 'landscape',
-            x_raster_size = 1024,
-            y_raster_size = 768,
-            ):
+    def compute_bounding_box(self,
+                             margin_ratio=0.1,
+                             map_orientation='landscape',
+                             x_raster_size=1024,
+                             y_raster_size=768):
+        """
+        Compute the bounding box and coordinate transforms for the raster grid.
 
+        Sets up the mapping between world coordinates and matrix indices.
+
+        Parameters
+        ----------
+        margin_ratio : float, optional
+            Margin as fraction of map extent (default: 0.1).
+        map_orientation : str, optional
+            'landscape' or 'portrait' (default: 'landscape').
+        x_raster_size : int, optional
+            Grid width in pixels (default: 1024).
+        y_raster_size : int, optional
+            Grid height in pixels (default: 768).
+        """
         self.xsize = x_raster_size
         self.ysize = y_raster_size
 
@@ -267,9 +366,25 @@ class WardCartogram():
         self.orig_width = x_[1] - x_[0]
         self.orig_height = y_[1] - y_[0]
 
-    def fast_density_to_matrix(self,verbose=False,set_boundary_to='mean',**kwargs):
+    def fast_density_to_matrix(self, verbose=False, set_boundary_to='mean', **kwargs):
+        """
+        Fast rasterization of ward densities to matrix using polygon filling.
 
-        ward_dens =  np.array(self.ward_density)
+        Parameters
+        ----------
+        verbose : bool, optional
+            Show progress (default: False).
+        set_boundary_to : str or float, optional
+            Value for areas outside wards: 'mean', 'min', or numeric.
+        **kwargs : dict
+            Additional arguments (unused).
+
+        Returns
+        -------
+        numpy.ndarray
+            Density matrix of shape (xsize, ysize).
+        """
+        ward_dens = np.array(self.ward_density)
 
         min_density = np.min(ward_dens[ward_dens>0.])
         mean_density = np.mean(ward_dens[ward_dens>0.])
@@ -452,6 +567,7 @@ class WardCartogram():
     def compute_cartogram(self,offset=0.005,blur=0.,verbose=False,**kwargs):
 
         if verbose:
+            print()
             print("computing cartogram...")
         self.cartogram = cart.compute_cartogram(
                                             self.density_matrix.tolist(),
@@ -594,8 +710,25 @@ class WardCartogram():
 
         return self.new_wards
 
-    def compute(self,verbose=False,**kwargs):
-        """do everything after init"""
+    def compute(self, verbose=False, **kwargs):
+        """
+        Compute the complete cartogram transformation.
+
+        Convenience method that runs all steps: cast density to matrix,
+        compute cartogram, and transform wards.
+
+        Parameters
+        ----------
+        verbose : bool, optional
+            Show progress (default: False).
+        **kwargs : dict
+            Additional arguments passed to sub-methods.
+
+        Returns
+        -------
+        list of shapely.geometry.Polygon
+            Transformed ward polygons.
+        """
         if self.density_matrix is None:
             self.cast_density_to_matrix(verbose)
         if self.cartogram is None:
@@ -607,23 +740,53 @@ class WardCartogram():
         pass
 
     def plot(self,
-             ax = None,
-             show_density_matrix = False,
-             show_new_wards = True,
-             ward_colors = None,
-             bg_color = 'w',
-             edge_colors = None,
-             outline_whole_shape = True,
-             whole_shape_color = [0.05,0.,0.],
-             whole_shape_linewidth = 1,
-             use_new_density = False,
-             intensity_range = [0.1,0.9]
-            ):
+             ax=None,
+             show_density_matrix=False,
+             show_new_wards=True,
+             ward_colors=None,
+             bg_color='w',
+             edge_colors=None,
+             outline_whole_shape=True,
+             whole_shape_color=[0.05, 0., 0.],
+             whole_shape_linewidth=1,
+             use_new_density=False,
+             intensity_range=[0.1, 0.9]):
         """
-            ward_colors can be
-                - an iterable container of colors - plot ward face colors according to a provided list
-                - "density" - plot ward face colors proportional to density
-                - "log_density" - plot ward face colors proportional to density
+        Plot the cartogram.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            Axes to plot on. If None, creates new figure.
+        show_density_matrix : bool, optional
+            Show density matrix as background image (default: False).
+        show_new_wards : bool, optional
+            If True, show transformed wards; if False, show original (default: True).
+        ward_colors : str, list, or color-like, optional
+            Ward face colors. Can be:
+            - 'density': color by density values
+            - 'log_density': color by log of density
+            - list of colors: one per ward
+            - single color: all wards same color
+        bg_color : color-like, optional
+            Background color (default: 'w').
+        edge_colors : color-like or list, optional
+            Ward edge colors (default: same as face).
+        outline_whole_shape : bool, optional
+            Draw outline around all wards (default: True).
+        whole_shape_color : color-like, optional
+            Color for whole shape outline.
+        whole_shape_linewidth : float, optional
+            Line width for outline (default: 1).
+        use_new_density : bool, optional
+            Use transformed density values (default: False).
+        intensity_range : list of float, optional
+            [min, max] for color intensity mapping (default: [0.1, 0.9]).
+
+        Returns
+        -------
+        fig, ax : matplotlib Figure and Axes
+            Only if ax was None; otherwise returns just ax.
         """
 
         generate_figure = ax is None

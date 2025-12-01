@@ -1,3 +1,11 @@
+"""
+GeoPandas integration for cartogram generation.
+
+This module provides the GeoDataFrameWardCartogram class for creating
+cartograms directly from GeoPandas GeoDataFrames, with support for
+interpolated animations between original and transformed geometries.
+"""
+
 #GDAL_LIBRARY_PATH = "/usr/local/lib/libgdal.dylib"
 #import ctypes
 #ctypes.CDLL(GDAL_LIBRARY_PATH)
@@ -12,21 +20,59 @@ from pycartogram.tools import enrich_polygon_to_n_points, match_vertex_count
 
 from copy import deepcopy
 
+
 class GeoDataFrameWardCartogram(WardCartogram):
+    """
+    Create cartograms from GeoPandas GeoDataFrames.
+
+    Extends WardCartogram to work directly with GeoDataFrames. Handles
+    both Polygon and MultiPolygon geometries, preserving all DataFrame
+    attributes through the transformation.
+
+    Supports interpolated animations between original and cartogram
+    geometries using easing functions for smooth transitions.
+
+    Parameters
+    ----------
+    geo_df : geopandas.GeoDataFrame
+        GeoDataFrame with geometry column containing ward boundaries.
+    ward_density_column : str
+        Column name containing density values for cartogram scaling.
+    margin_ratio : float, optional
+        Margin as fraction of map size (default: 0.2).
+    map_orientation : str, optional
+        'landscape' or 'portrait' (default: 'landscape').
+    x_raster_size : int, optional
+        Grid width in pixels (default: 1024).
+    y_raster_size : int, optional
+        Grid height in pixels (default: 768).
+
+    Attributes
+    ----------
+    gdf : geopandas.GeoDataFrame
+        Copy of input GeoDataFrame.
+    ward_indices : list of list
+        Mapping from GeoDataFrame rows to internal ward indices
+        (handles MultiPolygon splitting).
+
+    Examples
+    --------
+    >>> gdf = gpd.read_file("regions.geojson")
+    >>> gdf['density'] = gdf['population'] / gdf.geometry.area
+    >>> carto = GeoDataFrameWardCartogram(gdf, 'density')
+    >>> carto.compute(verbose=True)
+    >>> new_gdf = carto.get_cartogram_geo_df()
+    """
 
     def __init__(self,
                  geo_df,
                  ward_density_column,
-                 margin_ratio = 0.2,
-                 map_orientation = 'landscape',
-                 x_raster_size = 1024,
-                 y_raster_size = 768,
+                 margin_ratio=0.2,
+                 map_orientation='landscape',
+                 x_raster_size=1024,
+                 y_raster_size=768,
                  ):
-        """
-        wards:        list of wards as shapely.Polygon
-        ward_density: list of density values for the wards
-        norm_density: if this value is 'True' the ward_density will be normed by area (default: False)
-        """
+        """Initialize cartogram from GeoDataFrame."""
 
         # loop through 
 
@@ -65,20 +111,52 @@ class GeoDataFrameWardCartogram(WardCartogram):
 
     def get_enriched_original_geo_df(self):
         """
-        Get a copy of the original geo dataframe where each polygon
-        has more vertices (such that transitions to the cartogram
-        can be smoother)
+        Get original geometry with enriched vertices for smooth animation.
+
+        Returns a GeoDataFrame with the original ward boundaries but with
+        additional vertices added to match the cartogram geometry. This
+        enables smooth interpolated transitions.
+
+        Returns
+        -------
+        geopandas.GeoDataFrame
+            Copy of original GeoDataFrame with enriched geometry.
         """
         return self._get_geo_df(self.new_old_wards)
 
     def get_cartogram_geo_df(self):
         """
-        Get the computed cartogram as a geo data frame.
+        Get the computed cartogram as a GeoDataFrame.
+
+        Returns
+        -------
+        geopandas.GeoDataFrame
+            GeoDataFrame with transformed cartogram geometry.
         """
         return self._get_geo_df(self.new_wards)
 
-    def get_interpolated_geo_df(self,t,ease='QuadEaseInOut'):
+    def get_interpolated_geo_df(self, t, ease='QuadEaseInOut'):
+        """
+        Get an interpolated GeoDataFrame between original and cartogram.
 
+        Creates a smoothly interpolated geometry between the original
+        ward boundaries and the transformed cartogram. Useful for
+        creating animated transitions.
+
+        Parameters
+        ----------
+        t : float
+            Interpolation parameter in [0, 1]. t=0 gives original,
+            t=1 gives cartogram.
+        ease : str, optional
+            Easing function for non-linear interpolation.
+            Options: 'QuadEaseInOut', 'CubicEaseInOut' (default: 'QuadEaseInOut').
+
+        Returns
+        -------
+        geopandas.GeoDataFrame
+            GeoDataFrame with interpolated geometry.
+        """
         if self._equal_length_enriched_wards is None:
             self._equal_length_enriched_wards = list(self.new_old_wards)
             self._equal_length_new_wards = list(self.new_wards)
@@ -115,9 +193,22 @@ class GeoDataFrameWardCartogram(WardCartogram):
         return self._get_geo_df(wards)
 
 
-    def _get_geo_df(self,wards):
+    def _get_geo_df(self, wards):
         """
-        Get the computed cartogram as a geo data frame.
+        Convert ward polygons back to a GeoDataFrame.
+
+        Internal method that reconstructs MultiPolygons from split
+        wards and creates a new GeoDataFrame with updated geometry.
+
+        Parameters
+        ----------
+        wards : list of shapely.geometry.Polygon
+            Ward polygons (may be split from MultiPolygons).
+
+        Returns
+        -------
+        geopandas.GeoDataFrame
+            GeoDataFrame with reconstructed geometry.
         """
         gdf = self.gdf.copy()
         new_geometry = []
@@ -131,8 +222,25 @@ class GeoDataFrameWardCartogram(WardCartogram):
         gdf['geometry'] = new_geometry
         return gdf
 
-    def _get_custom_json(self,wards,label):
+    def _get_custom_json(self, wards, label):
         """
+        Export wards to custom JSON format for web visualization.
+
+        Creates a JSON structure suitable for interactive web maps,
+        with polygon coordinates and associated attributes.
+
+        Parameters
+        ----------
+        wards : list of shapely.geometry.Polygon
+            Ward polygons to export.
+        label : str
+            Label for this map (e.g., 'original', 'cartogram').
+
+        Returns
+        -------
+        dict
+            JSON-serializable dictionary with structure:
+
         .. code:: python
 
             {
@@ -217,20 +325,62 @@ class GeoDataFrameWardCartogram(WardCartogram):
 
         return this_data
 
-    def get_enriched_original_as_custom_json(self,df,label='original'):
+    def get_enriched_original_as_custom_json(self, df, label='original'):
         """
-        """
-        return self._get_custom_json(self.new_old_wards)
+        Export enriched original geometry to custom JSON format.
 
-    def get_cartogram_as_custom_json(self,df,label='cartogram'):
+        Parameters
+        ----------
+        df : ignored
+            Unused parameter (kept for API compatibility).
+        label : str, optional
+            Map label (default: 'original').
+
+        Returns
+        -------
+        dict
+            Custom JSON structure with enriched original polygons.
         """
+        return self._get_custom_json(self.new_old_wards, label)
+
+    def get_cartogram_as_custom_json(self, df, label='cartogram'):
         """
-        return self._get_custom_json(self.new_wards,label)
+        Export cartogram geometry to custom JSON format.
+
+        Parameters
+        ----------
+        df : ignored
+            Unused parameter (kept for API compatibility).
+        label : str, optional
+            Map label (default: 'cartogram').
+
+        Returns
+        -------
+        dict
+            Custom JSON structure with cartogram polygons.
+        """
+        return self._get_custom_json(self.new_wards, label)
 
 
 def merge_custom_jsons(*list_of_custom_jsons):
-
     """
+    Merge multiple single-map JSONs into a multi-map structure.
+
+    Combines several custom JSON exports (e.g., original and cartogram)
+    into a single structure suitable for animated or comparative
+    web visualizations.
+
+    Parameters
+    ----------
+    *list_of_custom_jsons : dict
+        Variable number of single-map JSON dictionaries from
+        _get_custom_json() or similar methods.
+
+    Returns
+    -------
+    dict
+        Merged JSON structure with format:
+
     .. code:: python
 
         {

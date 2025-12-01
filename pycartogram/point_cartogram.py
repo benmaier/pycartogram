@@ -1,3 +1,9 @@
+"""
+Point-based cartogram generation.
+
+This module provides the PointCartogram class for creating cartograms
+directly from point location data, without requiring predefined ward densities.
+"""
 
 import numpy as np
 import shapely.geometry as sgeom
@@ -13,22 +19,55 @@ import visvalingamwyatt as vw
 import scipy.sparse as sprs
 from scipy.spatial import ConvexHull
 
+
 class PointCartogram(WardCartogram):
+    """
+    Create cartograms from point location data.
+
+    Extends WardCartogram to work directly with point data. Density is
+    computed from point counts in grid cells rather than predefined values.
+
+    Parameters
+    ----------
+    points : array-like of shape (n, 2)
+        Point coordinates as (x, y) pairs.
+    wards : list of shapely.geometry.Polygon, optional
+        Ward boundaries. If None, uses convex hull of points.
+    norm_density : bool, optional
+        Normalize density by area (default: False).
+    margin_ratio : float, optional
+        Margin as fraction of map size (default: 0.2).
+    map_orientation : str, optional
+        'landscape' or 'portrait' (default: 'landscape').
+    x_raster_size : int, optional
+        Grid width in pixels (default: 1024).
+    y_raster_size : int, optional
+        Grid height in pixels (default: 768).
+
+    Attributes
+    ----------
+    points : numpy.ndarray
+        Original point coordinates.
+    new_points : numpy.ndarray
+        Transformed point coordinates (after compute()).
+
+    Examples
+    --------
+    >>> points = np.random.rand(1000, 2)
+    >>> carto = PointCartogram(points)
+    >>> carto.compute(verbose=True)
+    >>> carto.plot_points()
+    """
 
     def __init__(self,
-                 points, # this is a list of (x,y)-coordinates
-                 wards = None,
+                 points,
+                 wards=None,
                  norm_density=False,
-                 margin_ratio = 0.2,
-                 map_orientation = 'landscape',
-                 x_raster_size = 1024,
-                 y_raster_size = 768,
-                 ):
-        """
-        wards:        list of wards as shapely.Polygon
-        ward_density: list of density values for the wards
-        norm_density: if this value is 'True' the ward_density will be normed by area (default: False)
-        """
+                 margin_ratio=0.2,
+                 map_orientation='landscape',
+                 x_raster_size=1024,
+                 y_raster_size=768):
+        """Initialize point cartogram with point data and optional wards."""
         self.no_wards_given = wards is None
         ward_density = None
 
@@ -51,41 +90,90 @@ class PointCartogram(WardCartogram):
                                y_raster_size = y_raster_size,
                               )
 
-    def _get_whole_shape_matrix(self,verbose=False):
-        A = np.zeros((self.xsize,self.ysize))
-        self._mark_matrix_with_shape(A,self.whole_shape)
+    def _get_whole_shape_matrix(self, verbose=False):
+        """Create binary matrix marking the whole shape area."""
+        A = np.zeros((self.xsize, self.ysize))
+        self._mark_matrix_with_shape(A, self.whole_shape)
         return A
 
-    def cast_density_to_matrix(self,verbose=False):
-        self.density_matrix = self.cast_points_to_matrix(self.points,verbose)
+    def cast_density_to_matrix(self, verbose=False):
+        """
+        Rasterize point locations to density matrix.
+
+        Parameters
+        ----------
+        verbose : bool, optional
+            Show progress (default: False).
+
+        Returns
+        -------
+        numpy.ndarray
+            Density matrix from point counts.
+        """
+        self.density_matrix = self.cast_points_to_matrix(self.points, verbose)
         return self.density_matrix
 
-    def compute(self,verbose=False):
-        """do everything after init"""
+    def compute(self, verbose=False):
+        """
+        Compute the complete point cartogram transformation.
+
+        Runs all steps: cast density, compute cartogram, transform wards,
+        and transform points.
+
+        Parameters
+        ----------
+        verbose : bool, optional
+            Show progress (default: False).
+        """
         self.cast_density_to_matrix(verbose)
         self.compute_cartogram(verbose=verbose)
         self.transform_wards(verbose)
-        x, y = self.transform_coords(self.points[:,0],self.points[:,1])
+        # Transform the point coordinates
+        x, y = self.transform_coords(self.points[:, 0], self.points[:, 1])
         n_ = len(x)
-        self.new_points = np.concatenate((x.reshape(n_,1),y.reshape(n_,1)),axis=1)
+        self.new_points = np.concatenate((x.reshape(n_, 1), y.reshape(n_, 1)), axis=1)
 
     def plot_points(self,
-             ax = None,                    
-             show_density_matrix = False,
-             show_new_points = True,
-             plot_wards = True,
-             ward_colors = 'None',
-             bg_color = 'w',
-             edge_colors = None,
-             outline_whole_shape = True,
-             use_new_density = False,
-             **kwargs # matplotlib arguments for points
-            ):
+                    ax=None,
+                    show_density_matrix=False,
+                    show_new_points=True,
+                    plot_wards=True,
+                    ward_colors='None',
+                    bg_color='w',
+                    edge_colors=None,
+                    outline_whole_shape=True,
+                    use_new_density=False,
+                    **kwargs):
         """
-            ward_colors can be
-                - an iterable container of colors - plot ward face colors according to a provided list
-                - "density" - plot ward face colors proportional to density
-                - "log_density" - plot ward face colors proportional to density
+        Plot points on the cartogram.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            Axes to plot on. If None, creates new figure.
+        show_density_matrix : bool, optional
+            Show density matrix as background (default: False).
+        show_new_points : bool, optional
+            If True, show transformed points; else original (default: True).
+        plot_wards : bool, optional
+            Show ward boundaries (default: True).
+        ward_colors : color-like, optional
+            Ward face colors (default: 'None' for transparent).
+        bg_color : color-like, optional
+            Background color (default: 'w').
+        edge_colors : color-like, optional
+            Ward edge colors.
+        outline_whole_shape : bool, optional
+            Draw outline around all wards (default: True).
+        use_new_density : bool, optional
+            Use transformed density (default: False).
+        **kwargs : dict
+            Additional arguments passed to ax.plot() for points.
+
+        Returns
+        -------
+        fig, ax : matplotlib Figure and Axes
+            Only if ax was None; otherwise returns just ax.
         """
 
         generate_figure = ax is None

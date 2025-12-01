@@ -1,3 +1,11 @@
+"""
+Voronoi-based cartogram generation.
+
+This module provides the VoronoiCartogram class for creating cartograms
+that use Voronoi tessellation to partition space based on point density.
+Each Voronoi cell's area is inversely proportional to local point density.
+"""
+
 from __future__ import print_function
 import numpy as np
 import shapely.geometry as sgeom
@@ -18,20 +26,59 @@ from scipy.spatial import ConvexHull
 from scipy.spatial import Voronoi
 from scipy.spatial import Delaunay
 
+
 class VoronoiCartogram(PointCartogram):
+    """
+    Create cartograms using Voronoi tessellation.
+
+    Extends PointCartogram to generate Voronoi cells from point data.
+    Each cell's density is set to the inverse of its area, creating
+    a visualization where dense point regions have small cells.
+
+    The class also computes a Delaunay triangulation to identify
+    neighboring cells and create a network graph connecting adjacent
+    Voronoi regions.
+
+    Parameters
+    ----------
+    points : array-like of shape (n, 2)
+        Point coordinates as (x, y) pairs.
+    wards : list of shapely.geometry.Polygon, optional
+        Ward boundaries. If None, uses convex hull of points.
+    margin_ratio : float, optional
+        Margin as fraction of map size (default: 0).
+    map_orientation : str, optional
+        'landscape' or 'portrait' (default: 'landscape').
+    x_raster_size : int, optional
+        Grid width in pixels (default: 1024).
+    y_raster_size : int, optional
+        Grid height in pixels (default: 768).
+
+    Attributes
+    ----------
+    new_wards : list of shapely.geometry.Polygon
+        Voronoi cells clipped to the bounding box.
+    new_ward_density : list of float
+        Density values (1/area) for each Voronoi cell.
+    network_lines : list of tuple
+        Line segments connecting adjacent Voronoi cell centers.
+
+    Examples
+    --------
+    >>> points = np.random.rand(100, 2)
+    >>> carto = VoronoiCartogram(points, x_raster_size=128, y_raster_size=64)
+    >>> fig, ax = carto.plot_voronoi(bg_color='k')
+    """
 
     def __init__(self,
-                 points, # this is a list of (x,y)-coordinates
-                 wards = None,
-                 margin_ratio = 0,
-                 map_orientation = 'landscape',
-                 x_raster_size = 1024,
-                 y_raster_size = 768,
+                 points,
+                 wards=None,
+                 margin_ratio=0,
+                 map_orientation='landscape',
+                 x_raster_size=1024,
+                 y_raster_size=768,
                  ):
-        """
-        wards:        list of wards as shapely.Polygon
-        ward_density: list of density values for the wards
-        """
+        """Initialize Voronoi cartogram and compute tessellation."""
 
         PointCartogram.__init__(self,
                                points,
@@ -45,16 +92,58 @@ class VoronoiCartogram(PointCartogram):
         self.compute()
 
 
-    def cast_density_to_matrix(self,verbose=False):
-        self.density_matrix = self.cast_points_to_matrix(self.points,verbose,replace_value_zero=False)
+    def cast_density_to_matrix(self, verbose=False):
+        """
+        Rasterize point locations to density matrix.
+
+        Unlike PointCartogram, this keeps zero values (no replacement)
+        so Voronoi can identify discrete point locations.
+
+        Parameters
+        ----------
+        verbose : bool, optional
+            Show progress (default: False).
+
+        Returns
+        -------
+        numpy.ndarray
+            Density matrix from point counts.
+        """
+        self.density_matrix = self.cast_points_to_matrix(self.points, verbose, replace_value_zero=False)
         return self.density_matrix
 
-    def compute(self,verbose=False):
-        """do everything after init"""
+    def compute(self, verbose=False):
+        """
+        Compute the Voronoi tessellation.
+
+        Casts points to density matrix and computes Voronoi cells.
+
+        Parameters
+        ----------
+        verbose : bool, optional
+            Show progress (default: False).
+        """
         self.cast_density_to_matrix(verbose)
         self.compute_voronoi(verbose=verbose)
 
-    def compute_voronoi(self,verbose=False):
+    def compute_voronoi(self, verbose=False):
+        """
+        Compute Voronoi tessellation from rasterized point locations.
+
+        Creates Voronoi cells from non-zero density matrix locations,
+        clips them to the bounding box, and computes the Delaunay
+        triangulation to identify neighboring cells.
+
+        Sets the following attributes:
+        - new_wards: Voronoi cells as polygons
+        - new_ward_density: inverse area of each cell
+        - network_lines: edges connecting adjacent cell centers
+
+        Parameters
+        ----------
+        verbose : bool, optional
+            Show progress (default: False).
+        """
         x_indices, y_indices = np.nonzero(self.density_matrix)
         x_ = np.array(x_indices,dtype=float)
         y_ = np.array(y_indices,dtype=float)
@@ -106,15 +195,36 @@ class VoronoiCartogram(PointCartogram):
 
     def plot_voronoi(self,
                      draw_point_network=True,
-                     network_color = [1,1,1],
-                     network_alpha = 0.5,
-                     network_linewidth = 1,
+                     network_color=[1, 1, 1],
+                     network_alpha=0.5,
+                     network_linewidth=1,
                      **kwargs):
+        """
+        Plot the Voronoi tessellation with optional network overlay.
 
+        Parameters
+        ----------
+        draw_point_network : bool, optional
+            If True, draw lines connecting adjacent Voronoi cells.
+            If False, draw points instead (default: True).
+        network_color : color-like, optional
+            Color for network lines/points (default: white [1,1,1]).
+        network_alpha : float, optional
+            Transparency for network (default: 0.5).
+        network_linewidth : float, optional
+            Line width for network edges (default: 1).
+        **kwargs : dict
+            Additional arguments passed to self.plot() for Voronoi cells.
+
+        Returns
+        -------
+        fig, ax : matplotlib Figure and Axes
+            The figure and axes containing the plot.
+        """
         fig, ax = self.plot(**kwargs)
 
+        # Legacy code for auto-detecting network color from background
         """
-        
         if 'bg_color' in kwargs:
             bg_color = kwargs['bg_color']            
         else:

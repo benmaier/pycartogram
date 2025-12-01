@@ -1,3 +1,11 @@
+"""
+Google location history integration for cartogram generation.
+
+This module provides the GoogleShapeProject class for loading Google
+location history data and projecting it onto geographic regions (wards)
+for use with pycartogram's cartogram generation.
+"""
+
 import cartopy.crs as ccrs
 import numpy as np
 from cartopy.io.shapereader import Reader
@@ -14,16 +22,60 @@ from shapely.ops import unary_union
 from datetime import date
 from datetime import datetime
 
+
 class GoogleShapeProject():
+    """
+    Load and project Google location history onto geographic regions.
+
+    Combines shapefile-defined regions (wards) with Google location history
+    or arbitrary lon/lat point data, projecting everything to a common
+    coordinate system for cartogram generation.
+
+    Parameters
+    ----------
+    shape_file : str
+        Path to shapefile containing ward/region boundaries.
+    google_file : str or None
+        Path to Google location history JSON file. If None, lon_lat_list
+        must be provided.
+    lon_lat_list : list of tuple, optional
+        Alternative to google_file: list of (longitude, latitude) pairs.
+    shape_source_proj : cartopy.crs.CRS, optional
+        Source projection of shapefile (default: PlateCarree/WGS84).
+    google_source_proj : cartopy.crs.CRS, optional
+        Source projection of Google data (default: PlateCarree/WGS84).
+    target_proj : cartopy.crs.CRS, optional
+        Target projection for all data (default: UTM zone 33N).
+    minimum_time_as_unix_seconds : float, optional
+        Filter Google data to only include points after this timestamp
+        (default: 0, includes all data).
+
+    Attributes
+    ----------
+    wards : list of shapely.geometry.Polygon
+        Ward boundaries in target projection.
+    records : list
+        Shapefile record metadata for each ward.
+    whole_shape : shapely.geometry.Polygon
+        Union of all ward boundaries.
+    orig_bbox : shapely.geometry.Polygon
+        Bounding box of all wards.
+    relevant_points : list
+        Points from Google data within the bounding box.
+    relevant_points_by_hour : list of list
+        Points grouped by hour of day (0-23).
+    all_relevant_points : list
+        Flattened list of all relevant points.
+    """
 
     def __init__(self,
                  shape_file,
                  google_file,
-                 lon_lat_list = None,
-                 shape_source_proj = ccrs.PlateCarree(),
-                 google_source_proj = ccrs.PlateCarree(),
-                 target_proj = ccrs.UTM(zone=33, southern_hemisphere=False),  # used to be '33N'
-                 minimum_time_as_unix_seconds = 0,
+                 lon_lat_list=None,
+                 shape_source_proj=ccrs.PlateCarree(),
+                 google_source_proj=ccrs.PlateCarree(),
+                 target_proj=ccrs.UTM(zone=33, southern_hemisphere=False),  # used to be '33N'
+                 minimum_time_as_unix_seconds=0,
                  ):
 
         # load the single (the first) polygon from 
@@ -120,23 +172,53 @@ class GoogleShapeProject():
             self.all_relevant_points = self.relevant_points
             
 
-    def label_this(ax,wards,labels,key='PLZ99'):
+    def label_this(ax, wards, labels, key='PLZ99'):
+        """
+        Add text labels to wards on a matplotlib axes.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            Axes to add labels to.
+        wards : list of shapely.geometry.Polygon
+            Ward polygons to label at centroids.
+        labels : dict
+            Mapping from ward key (e.g., postal code) to label text.
+        key : str, optional
+            Attribute name to use for ward identification (default: 'PLZ99').
+        """
         for iward, ward in enumerate(wards):
             PLZ = self.records[iward].attributes['PLZ99']
             ha = 'center'
             va = 'center'
             if PLZ in labels:
-            #if iward in indices:
                 ax.text(ward.centroid.x,
                         ward.centroid.y,
                         labels[PLZ],
-                        ha = ha,
-                        va = va,
+                        ha=ha,
+                        va=va,
                         fontsize='small'
-                       )       
+                       )
 
-    def export_json(self,carto,additional_data=None,export_rec_attributes=[]):
-        
+    def export_json(self, carto, additional_data=None, export_rec_attributes=[]):
+        """
+        Export cartogram data to JSON format.
+
+        Parameters
+        ----------
+        carto : WardCartogram
+            Computed cartogram object with old_ward_coords and new_ward_coords.
+        additional_data : dict, optional
+            Extra data to include in export.
+        export_rec_attributes : list of str, optional
+            Shapefile attribute names to include for each ward.
+
+        Returns
+        -------
+        dict
+            JSON-serializable dictionary with original and transformed
+            ward coordinates, domain bounds, and ward attributes.
+        """
         export = { 
                    'attributes': [],
                    'domain':{ 'x': (self.orig_bbox.bounds[0],self.orig_bbox.bounds[2]),
@@ -159,8 +241,32 @@ class GoogleShapeProject():
         return export
         
 
-    def _export_json(self,new_wards,delta,old_wards=None,additional_data=None,export_rec_attributes=[]):
-        
+    def _export_json(self, new_wards, delta, old_wards=None, additional_data=None, export_rec_attributes=[]):
+        """
+        Export ward data to JSON with polygon enrichment.
+
+        Internal method that enriches polygons with additional vertices
+        before export to enable smooth animations.
+
+        Parameters
+        ----------
+        new_wards : list of shapely.geometry.Polygon
+            Transformed ward polygons.
+        delta : float
+            Maximum distance between vertices when enriching polygons.
+        old_wards : list of shapely.geometry.Polygon, optional
+            Original ward polygons. If None, uses self.wards.
+        additional_data : dict, optional
+            Extra data to include in export.
+        export_rec_attributes : list of str, optional
+            Shapefile attribute names to include for each ward.
+
+        Returns
+        -------
+        dict
+            JSON-serializable dictionary with enriched original and
+            transformed ward coordinates.
+        """
         export = { 
                    'attributes': [],
                    'domain':{ 'x': (self.orig_bbox.bounds[0],self.orig_bbox.bounds[2]),
