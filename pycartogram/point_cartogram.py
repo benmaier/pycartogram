@@ -8,7 +8,6 @@ import matplotlib as mpl
 import matplotlib.pyplot as pl
 import progressbar
 import cCartogram as cart
-from pycartogram.tools import *
 from pycartogram import WardCartogram
 import visvalingamwyatt as vw
 import scipy.sparse as sprs

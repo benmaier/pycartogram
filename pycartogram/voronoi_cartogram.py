@@ -3,13 +3,12 @@ import numpy as np
 import shapely.geometry as sgeom
 from shapely.ops import unary_union
 from shapely.geometry import Polygon
-from pycartogram.tools import polygon_patch
+from pycartogram.tools import polygon_patch, voronoi_finite_polygons_2d
 import matplotlib as mpl
 import matplotlib.pyplot as pl
 from matplotlib import collections  as mplcoll
 import progressbar
 import cCartogram as cart
-from pycartogram.tools import *
 from pycartogram import WardCartogram
 from pycartogram import PointCartogram
 import scipy.sparse as sprs

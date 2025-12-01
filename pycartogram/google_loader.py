@@ -4,11 +4,15 @@ from cartopy.io.shapereader import Reader
 import json
 import shapely.geometry as sgeom
 from shapely.geometry import Polygon
-from pycartogram.tools import polygon_patch
+from pycartogram.tools import (
+    polygon_patch,
+    enrich_polygon_with_points,
+    enrich_polygon_to_n_points,
+    get_json,
+)
 from shapely.ops import unary_union
 from datetime import date
 from datetime import datetime
-from pycartogram.tools import *
 
 class GoogleShapeProject():
 

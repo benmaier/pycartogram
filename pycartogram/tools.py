@@ -165,27 +165,9 @@ def match_vertex_count(geom0, geom1):
         return new_geom, long_geom
 
 
-def fill_matrix(A,i,j,new_val=1.,old_val=None):
-    index_list = [(i,j)]
-    if old_val is None:
-        old_val = A[i,j]
-    x_, y_ = A.shape
-
-    while len(index_list) > 0:
-        i,j = index_list.pop()
-        A[i,j] = new_val
-        if i+1 < x_ and A[i+1,j] == old_val:
-            index_list.append((i+1,j))
-        if j+1 < y_ and A[i,j+1] == old_val:
-            index_list.append((i,j+1))
-        if j-1 >= 0 and A[i,j-1] == old_val:
-            index_list.append((i,j-1))
-        if i-1 >= 0 and A[i-1,j] == old_val:
-            index_list.append((i-1,j))            
-        
 def savefig_marginless(fn,fig,ax,**kwargs):
     ax.set_axis_off()
-    fig.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, 
+    fig.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0,
             hspace = 0, wspace = 0)
     ax.margins(0,0)
     ax.xaxis.set_major_locator(pl.NullLocator())
@@ -244,7 +226,7 @@ def logify_and_scale(hist,
     else:
         return log_hist, intensity, nan_min, nan_max
 
-def coarse_grain_wards(self,wards,th):
+def coarse_grain_wards(wards, th):
     new_wards = []
     for ward in wards:
         coo = ward.exterior.coords.xy
@@ -282,7 +264,7 @@ def get_polygon_network(wards):
 
         g0 = wards[ig0]
         g1 = wards[ig1]
-        
+
         if g0.touches(g1):
             edges.append((ig0,ig1))
 
@@ -292,7 +274,7 @@ def get_polygon_network(wards):
 def add_intersection_points_to_wards(wards):
 
     for g0, g1 in itertools.combinations(wards,2):
-        
+
         if g0.touches(g1):
 
             g0_ring = LineString(list(g0.exterior.coords))
@@ -394,11 +376,11 @@ def voronoi_finite_polygons_2d(vor, radius=None):
 
 if __name__ == "__main__":
 
-    A = Polygon([ 
+    A = Polygon([
                   (0.,0.),
                   (1.,0.),
                   (1.,1.),
-                  (0.,1.), 
+                  (0.,1.),
                   (0.,0.),
                 ])
 

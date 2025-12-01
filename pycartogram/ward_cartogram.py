@@ -3,12 +3,21 @@ import numpy as np
 import shapely.geometry as sgeom
 from shapely.ops import unary_union, polygonize
 from shapely.geometry import Polygon, LineString, MultiPolygon, Point
-from pycartogram.tools import polygon_patch
+from pycartogram.tools import (
+    polygon_patch,
+    add_intersection_points_to_wards,
+    coarse_grain_wards,
+    enrich_polygon_with_points,
+    scale,
+    logify_and_scale,
+    is_iter,
+)
 import matplotlib as mpl
 import matplotlib.pyplot as pl
+from matplotlib.path import Path
 import progressbar
 import cCartogram as cart
-from pycartogram.tools import *
+from tqdm import tqdm
 
 class WardCartogram():
 
@@ -20,16 +29,22 @@ class WardCartogram():
                  map_orientation = 'landscape',
                  x_raster_size = 1024,
                  y_raster_size = 768,
+                 threshold_for_polygon_coarse_graining = None,
                  ):
         """
         wards:        list of wards as shapely.Polygon
         ward_density: list of density values for the wards
         norm_density: if this value is 'True' the ward_density will be normed by area (default: False)
+        threshold_for_polygon_coarse_graining: if not None, simplify ward polygons using Visvalingam-Whyatt algorithm
         """
 
         self.ward_density = ward_density
 
         add_intersection_points_to_wards(wards)
+
+        if threshold_for_polygon_coarse_graining is not None:
+            wards = coarse_grain_wards(wards, threshold_for_polygon_coarse_graining)
+
         self.wards = wards
 
         if norm_density:
@@ -59,28 +74,27 @@ class WardCartogram():
 
         self.wards = [ enrich_polygon_with_points(ward,delta_for_enrichment) for ward in self.wards ]
 
-    def _mark_matrix_with_shape(self,A_,shape,new_val=1.,old_val=None):
-        distance = shape.length
-        n_tiles = int(distance / self.tile_size * 10)
-        interpolation_values = np.linspace(0,1,n_tiles)
-        matrix_x = np.zeros_like(interpolation_values)
-        matrix_y = np.zeros_like(interpolation_values)
-        boundary = sgeom.LineString(shape.boundary)
-        for i, ival in enumerate(interpolation_values):
-            p = boundary.interpolate(ival,normalized=True)
-            matrix_x[i] = p.x
-            matrix_y[i] = p.y
-        
-        i = np.array(self.i_from_x(matrix_x),dtype=int)
-        j = np.array(self.j_from_y(matrix_y),dtype=int)
-        A_[i,j] = new_val
-        point_within = shape.centroid
-        fill_matrix(A_,
-                    int(self.i_from_x(point_within.x)),
-                    int(self.j_from_y(point_within.y)),
-                    new_val = new_val,
-                    old_val = old_val,
-                )
+    def _mark_matrix_with_shape(self, A_, shape, new_val=1., old_val=None):
+        """Rasterize a polygon onto a matrix using matplotlib.path for speed."""
+        # Create grid of all matrix coordinates
+        i_coords = np.arange(A_.shape[0])
+        j_coords = np.arange(A_.shape[1])
+        ii, jj = np.meshgrid(i_coords, j_coords, indexing='ij')
+
+        # Convert matrix indices to world coordinates
+        x_coords = self.x_from_i(ii.ravel())
+        y_coords = self.y_from_j(jj.ravel())
+        points = np.column_stack([x_coords, y_coords])
+
+        # Create matplotlib Path from polygon exterior
+        poly_coords = np.array(shape.exterior.coords)
+        path = Path(poly_coords)
+
+        # Check which points are inside (vectorized, fast)
+        inside = path.contains_points(points).reshape(A_.shape)
+
+        # Set values
+        A_[inside] = new_val
 
     def compute_ward_density_from_locations(
             self,
@@ -93,14 +107,14 @@ class WardCartogram():
 
         hist = np.zeros((len(self.wards),),dtype=float)
 
-        # those are the logarithmically distributed time points 
+        # those are the logarithmically distributed time points
         # at which the wards are sorted for relevance
         sort_events = np.unique(\
                                np.array(
                                np.logspace(2,
                                            np.log(len(i)-1)/np.log(10),
                                            100,
-                                          ),                           
+                                          ),
                                dtype=int
                                )
                               )
@@ -150,7 +164,7 @@ class WardCartogram():
                 # now be at the beginning of the list
                 ward_order = np.argsort(-hist,kind='mergesort')
                 # print "sort_event at point_id =", point_id
-                
+
             if verbose:
                 bar.update(point_id)
         # NORM
@@ -159,7 +173,7 @@ class WardCartogram():
             self.ward_density[i] /= w.area
 
         return self.ward_density
-            
+
 
     def compute_bounding_box(
             self,
@@ -197,7 +211,7 @@ class WardCartogram():
 
             if margin_x < 0:
                 raise ValueError("New width is smaller than old width, please increase x_raster_size")
-        
+
         x_ = x_[0] - margin_x, x_[1] + margin_x
         y_ = y_[0] - margin_y, y_[1] + margin_y
 
@@ -207,8 +221,8 @@ class WardCartogram():
                                  (x_[0],y_[1]),
                                 ])
 
-        size_x = self.tile_size 
-        size_y = self.tile_size 
+        size_x = self.tile_size
+        size_y = self.tile_size
 
         self.x_from_i = lambda i: i * size_x + size_x / 2. + x_[0]
         self.y_from_j = lambda j: j * size_y + size_y / 2. + y_[0]
@@ -254,7 +268,7 @@ class WardCartogram():
         self.orig_height = y_[1] - y_[0]
 
     def fast_density_to_matrix(self,verbose=False,set_boundary_to='mean',**kwargs):
-        
+
         ward_dens =  np.array(self.ward_density)
 
         min_density = np.min(ward_dens[ward_dens>0.])
@@ -345,7 +359,7 @@ class WardCartogram():
 
         #mean_density = np.mean(density[density>0.])
         #print("mean_density",mean_density)
-        #density[(offset_i,offset_j)] = offset_density                      
+        #density[(offset_i,offset_j)] = offset_density
         #print("density at first offset", density[offset_i[0],offset_j[0]])
 
         #print("min_density", np.amin(density))
@@ -392,7 +406,7 @@ class WardCartogram():
             bar = progressbar.ProgressBar(
                 max_value = locations.shape[0] - 1,
                 widgets = [ progressbar.SimpleProgress()," ",
-                            progressbar.ETA(), 
+                            progressbar.ETA(),
                             " casting points to matrix..."
                           ]
             )
@@ -424,7 +438,7 @@ class WardCartogram():
         old_x = x
         old_y = y
         i_ = self.i_from_x(np.array(old_x))
-        j_ = self.j_from_y(np.array(old_y)) 
+        j_ = self.j_from_y(np.array(old_y))
         new_ij = cart.remap_coordinates(list(zip(i_,j_)),
                                         self.cartogram,
                                         self.xsize,
@@ -713,21 +727,21 @@ class WardCartogram():
             return ax
 
 if __name__ == "__main__":
-        A = Polygon([ 
+        A = Polygon([
                       (0.,0.),
                       (1.,0.),
                       (1.,1.),
-                      (0.,1.), 
+                      (0.,1.),
                       (0.,0.),
                     ])
-        B = Polygon([ 
+        B = Polygon([
                       (1.,0.),
                       (2.,0.),
                       (2.,1.),
                       (1.,1.),
                       (1.,0.),
                     ])
-        C = Polygon([ 
+        C = Polygon([
                       (2.,0.),
                       (3.,0.),
                       (3.,1.),
@@ -772,4 +786,4 @@ if __name__ == "__main__":
         pl.show()
 
 
-    
+

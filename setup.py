@@ -18,6 +18,7 @@ setup(name='pycartogram',
           'cartopy',
           'progressbar2',
           'visvalingamwyatt',
+          'tqdm',
       ],
       dependency_links=[
           ],
