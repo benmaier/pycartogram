@@ -1,9 +1,9 @@
 from __future__ import print_function
 import numpy as np
 import shapely.geometry as sgeom
-from shapely.ops import cascaded_union
+from shapely.ops import unary_union
 from shapely.geometry import Polygon
-from descartes.patch import PolygonPatch
+from pycartogram.tools import polygon_patch
 import matplotlib as mpl
 import matplotlib.pyplot as pl
 from matplotlib import collections  as mplcoll

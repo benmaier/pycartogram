@@ -1,9 +1,9 @@
 
 import numpy as np
 import shapely.geometry as sgeom
-from shapely.ops import cascaded_union
+from shapely.ops import unary_union
 from shapely.geometry import Polygon
-from descartes.patch import PolygonPatch
+from pycartogram.tools import polygon_patch
 import matplotlib as mpl
 import matplotlib.pyplot as pl
 import progressbar
@@ -138,7 +138,6 @@ class PointCartogram(WardCartogram):
             kwargs['mec'] = 'k'
 
         kwargs['ls'] = 'None'
-        kwargs['linestyle'] = 'None'
 
         ax.plot(x,y,**kwargs)
             

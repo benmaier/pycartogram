@@ -2,7 +2,7 @@ import numpy as np
 from shapely.geometry import Polygon, MultiPolygon
 import matplotlib.pyplot as plt
 from shapely.geometry import LineString, MultiPolygon
-from shapely.ops import polygonize, unary_union, cascaded_union
+from shapely.ops import polygonize, unary_union
 
 x = np.array([ 0.38517325,  0.40859912,  0.43296919,  0.4583215 ,  0.4583215 ,
                0.43296919,  0.40859912,  0.38517325,  0.36265506,  0.34100929])

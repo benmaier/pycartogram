@@ -1,9 +1,58 @@
 import numpy as np
 import matplotlib.pyplot as pl
+from matplotlib.path import Path
+from matplotlib.patches import PathPatch
 from shapely.geometry import Polygon, LineString, MultiPolygon, Point
 from shapely.ops import polygonize
 import itertools
 import visvalingamwyatt as vw
+
+
+def polygon_patch(polygon, **kwargs):
+    """
+    Create a matplotlib PathPatch from a shapely Polygon or MultiPolygon.
+    Drop-in replacement for descartes.PolygonPatch.
+    """
+    def ring_to_codes(n):
+        """Generate path codes for a ring with n points."""
+        codes = [Path.LINETO] * n
+        codes[0] = Path.MOVETO
+        codes[-1] = Path.CLOSEPOLY
+        return codes
+
+    def polygon_to_path(poly):
+        """Convert a single Polygon to vertices and codes."""
+        vertices = []
+        codes = []
+
+        # Exterior ring
+        ext_coords = list(poly.exterior.coords)
+        vertices.extend(ext_coords)
+        codes.extend(ring_to_codes(len(ext_coords)))
+
+        # Interior rings (holes)
+        for interior in poly.interiors:
+            int_coords = list(interior.coords)
+            vertices.extend(int_coords)
+            codes.extend(ring_to_codes(len(int_coords)))
+
+        return vertices, codes
+
+    vertices = []
+    codes = []
+
+    if isinstance(polygon, MultiPolygon):
+        for poly in polygon.geoms:
+            v, c = polygon_to_path(poly)
+            vertices.extend(v)
+            codes.extend(c)
+    elif isinstance(polygon, Polygon):
+        vertices, codes = polygon_to_path(polygon)
+    else:
+        raise TypeError(f"Expected Polygon or MultiPolygon, got {type(polygon)}")
+
+    path = Path(vertices, codes)
+    return PathPatch(path, **kwargs)
 
 def pair_iterate(l):
     for i in range(1,len(l)):

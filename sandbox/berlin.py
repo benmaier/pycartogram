@@ -27,11 +27,11 @@ def load_wards(shapefile):
 
 
     shape_data = [
-            geom[0] \
+            geom[0] if hasattr(geom, '__getitem__') else geom \
             for geom in Reader(shapefile).geometries()\
           ]
 
-    target_proj = ccrs.UTM('33N')
+    target_proj = ccrs.UTM(zone=33, southern_hemisphere=False)  # used to be '33N'
     source_proj = ccrs.PlateCarree()
 
     new_shape_data = []
@@ -119,6 +119,7 @@ carto_point.plot(
         ax=ax[1,2])
 ax[1,2].set_title('cartogram after pixel binning')
 
+fig.tight_layout()
 fig.savefig('./berlin.png')
 
 pl.show()

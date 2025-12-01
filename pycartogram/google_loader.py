@@ -4,8 +4,8 @@ from cartopy.io.shapereader import Reader
 import json
 import shapely.geometry as sgeom
 from shapely.geometry import Polygon
-from descartes.patch import PolygonPatch
-from shapely.ops import cascaded_union
+from pycartogram.tools import polygon_patch
+from shapely.ops import unary_union
 from datetime import date
 from datetime import datetime
 from pycartogram.tools import *
@@ -18,7 +18,7 @@ class GoogleShapeProject():
                  lon_lat_list = None,
                  shape_source_proj = ccrs.PlateCarree(),
                  google_source_proj = ccrs.PlateCarree(),
-                 target_proj = ccrs.UTM('33N'),
+                 target_proj = ccrs.UTM(zone=33, southern_hemisphere=False),  # used to be '33N'
                  minimum_time_as_unix_seconds = 0,
                  ):
 
@@ -54,7 +54,7 @@ class GoogleShapeProject():
         self.records = shape_records
 
         # cascade each polygon s.t. we get a big polygon representing berlin
-        self.whole_shape = cascaded_union(self.wards) 
+        self.whole_shape = unary_union(self.wards) 
         # get Berlin bounding box as polygon
         x_ = (self.whole_shape.bounds[0],self.whole_shape.bounds[2])
         y_ = (self.whole_shape.bounds[1],self.whole_shape.bounds[3])

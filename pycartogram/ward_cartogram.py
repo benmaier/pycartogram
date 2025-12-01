@@ -1,9 +1,9 @@
 
 import numpy as np
 import shapely.geometry as sgeom
-from shapely.ops import cascaded_union, unary_union, polygonize
+from shapely.ops import unary_union, polygonize
 from shapely.geometry import Polygon, LineString, MultiPolygon, Point
-from descartes.patch import PolygonPatch
+from pycartogram.tools import polygon_patch
 import matplotlib as mpl
 import matplotlib.pyplot as pl
 import progressbar
@@ -61,7 +61,7 @@ class WardCartogram():
 
     def _mark_matrix_with_shape(self,A_,shape,new_val=1.,old_val=None):
         distance = shape.length
-        n_tiles = distance / self.tile_size * 10
+        n_tiles = int(distance / self.tile_size * 10)
         interpolation_values = np.linspace(0,1,n_tiles)
         matrix_x = np.zeros_like(interpolation_values)
         matrix_y = np.zeros_like(interpolation_values)
@@ -242,7 +242,7 @@ class WardCartogram():
         return x_, y_
 
     def _process_wards(self):
-        self.whole_shape = cascaded_union(self.wards)
+        self.whole_shape = unary_union(self.wards)
         x_, y_ = self.get_ward_bounds()
 
         self.orig_bbox = Polygon([(x_[0],y_[0]),
@@ -639,7 +639,7 @@ class WardCartogram():
 
         if mpl.colors.is_color_like(ward_colors):
             color = lambda iward: ward_colors
-        elif ward_colors in ['density', 'log_density']:
+        elif isinstance(ward_colors, str) and ward_colors in ['density', 'log_density']:
             if use_new_density:
                 density = self.new_ward_density
             else:
@@ -664,7 +664,7 @@ class WardCartogram():
             edge_color = lambda iward: edge_colors[iward]
 
         # set background patch
-        patch = PolygonPatch(self.big_bbox,
+        patch = polygon_patch(self.big_bbox,
                              facecolor = bg_color,
                              edgecolor = 'None',
                              #alpha = 1,
@@ -686,7 +686,7 @@ class WardCartogram():
         # plot every ward
         for ward_id, ward in enumerate(wards):
             fc = color(ward_id)
-            patch = PolygonPatch(ward,
+            patch = polygon_patch(ward,
                                  facecolor = fc,
                                  edgecolor = edge_color(ward_id),
                                  #alpha = 1,
@@ -696,7 +696,7 @@ class WardCartogram():
 
         # set whole shape background
         if outline_whole_shape:
-            patch = PolygonPatch(whole,
+            patch = polygon_patch(whole,
                                  facecolor = 'None',
                                  edgecolor = whole_shape_color,
                                  alpha = 1,
