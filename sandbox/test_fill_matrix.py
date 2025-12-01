@@ -6,7 +6,6 @@ from shapely.geometry import Polygon, LineString, MultiPolygon, Point
 from pycartogram.tools import polygon_patch
 import matplotlib as mpl
 import matplotlib.pyplot as pl
-import progressbar
 import cCartogram as cart
 from pycartogram import WardCartogram
 import visvalingamwyatt as vw

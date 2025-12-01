@@ -42,7 +42,6 @@ dependencies = [
     "scipy>=1.7.0",
     "matplotlib>=3.5.0",
     "shapely>=2.0.0",
-    "progressbar2>=4.0.0",
     "visvalingamwyatt>=0.2.0",
     "tqdm>=4.60.0",
 ]

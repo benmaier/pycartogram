@@ -24,7 +24,6 @@ from pycartogram.tools import (
 import matplotlib as mpl
 import matplotlib.pyplot as pl
 from matplotlib.path import Path
-import progressbar
 import cCartogram as cart
 from tqdm import tqdm
 
@@ -213,13 +212,7 @@ class WardCartogram:
 
         # iterate through locations
         if verbose:
-            bar = progressbar.ProgressBar(
-                        max_value = len(i)-1,
-                        widgets = [
-                            progressbar.SimpleProgress()," ",
-                            progressbar.ETA()," computing ward densities ..."
-                        ]
-                )
+            pbar = tqdm(total=len(i), desc="computing ward densities")
 
         for point_id, (i_,j_) in enumerate(zip(i,j)):
 
@@ -252,7 +245,10 @@ class WardCartogram:
                 # print "sort_event at point_id =", point_id
 
             if verbose:
-                bar.update(point_id)
+                pbar.update(1)
+
+        if verbose:
+            pbar.close()
         # NORM
         self.ward_density = np.array(hist)
         for i, w in enumerate(self.wards):
@@ -421,15 +417,7 @@ class WardCartogram:
         density = np.zeros((self.xsize,self.ysize),dtype=float)
 
         if verbose:
-            #print("casting ward density to discrete matrix values")
-            bar = progressbar.ProgressBar(
-                max_value = len(self.wards) - 1,
-                widgets = [
-                    progressbar.SimpleProgress()," ",
-                    progressbar.ETA(),
-                    " cast density to matrix ...",
-                ]
-            )
+            pbar = tqdm(total=len(self.wards), desc="cast density to matrix")
         #offset_i = []
         #offset_j = []
         if len(ward_matrix_coordinates) == len(self.wards):
@@ -463,7 +451,10 @@ class WardCartogram:
                             #    offset_j.append(j)
                             #    #print("set offset density", offset_density)
                 if verbose:
-                    bar.update(iward)
+                    pbar.update(1)
+
+            if verbose:
+                pbar.close()
         else:
             for iward, ward in enumerate(self.wards):
                 for i, j in self.ward_matrix_coordinates[iward]:
@@ -518,13 +509,7 @@ class WardCartogram:
 
         # fill matrix with points visited
         if verbose:
-            bar = progressbar.ProgressBar(
-                max_value = locations.shape[0] - 1,
-                widgets = [ progressbar.SimpleProgress()," ",
-                            progressbar.ETA(),
-                            " casting points to matrix..."
-                          ]
-            )
+            pbar = tqdm(total=locations.shape[0], desc="casting points to matrix")
 
         for point_id in range(locations.shape[0]):
             # show progress
@@ -534,8 +519,11 @@ class WardCartogram:
             if x_id>=0 and x_id < self.xsize and\
                y_id>=0 and y_id < self.ysize:
                 density[x_id, y_id] += 1
-                if verbose:
-                    bar.update(point_id)
+            if verbose:
+                pbar.update(1)
+
+        if verbose:
+            pbar.close()
 
         if replace_value_zero:
             mean_density = np.mean(density[density>0.])
@@ -594,10 +582,7 @@ class WardCartogram:
         self.new_old_wards = []
 
         if verbose:
-            bar = progressbar.ProgressBar(
-                max_value = len(self.wards),
-                widgets = [progressbar.SimpleProgress()," transforming wards to new coordinates..."]
-            )
+            pbar = tqdm(total=len(self.wards), desc="transforming wards")
 
         for iward,ward in enumerate(self.wards):
             if enrich_wards_with_points:
@@ -659,9 +644,11 @@ class WardCartogram:
 
             new_wards.append(new_ward)
 
-
             if verbose:
-                bar.update(iward)
+                pbar.update(1)
+
+        if verbose:
+            pbar.close()
 
         self.new_ward_density = np.array(new_ward_density)
         self.new_wards = new_wards
@@ -681,19 +668,16 @@ class WardCartogram:
                 print('method produced error')
                 print(e)
                 print('will fall back to slower method')
-                bar = progressbar.ProgressBar(
-                        max_value = len(self.new_wards),
-                        widgets = [
-                                progressbar.SimpleProgress()," ",
-                                progressbar.ETA()," joining wards to whole shape ...",
-                            ]
-                        )
+                pbar = tqdm(total=len(self.new_wards), desc="joining wards")
 
             poly1 = self.new_wards[0]
             for i, poly2 in enumerate(self.new_wards[1:]):
                 poly1 = poly1.union(poly2)
                 if verbose:
-                    bar.update(i)
+                    pbar.update(1)
+
+            if verbose:
+                pbar.close()
         # dirty hack ends here
 
         # delete holes (construct new Polygon from exterior)

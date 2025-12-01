@@ -15,7 +15,6 @@ from pycartogram.tools import polygon_patch, voronoi_finite_polygons_2d
 import matplotlib as mpl
 import matplotlib.pyplot as pl
 from matplotlib import collections  as mplcoll
-import progressbar
 import cCartogram as cart
 from pycartogram import WardCartogram
 from pycartogram import PointCartogram
