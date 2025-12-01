@@ -1,17 +1,54 @@
-*.so*
-*.o*
-.DS_Store
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
 
+# C extensions
+*.so
+*.o
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+wheels/
+pip-wheel-metadata/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
 *_data
 *_data_*
 a.out
 *.npy
 *.mexmaci64
 *.m~
-*.pyc
-
-/*.egg-info/
-/build/
 /tmp/
-/dist/
 /original_program/

@@ -1,3 +1,6 @@
 include MANIFEST.in
 include setup.py
+include pyproject.toml
 include README.md
+include LICENSE.txt
+recursive-include pycartogram/data *

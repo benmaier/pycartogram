@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pycartogram"
+version = "0.1.0"
+description = "Tools to efficiently generate cartograms using the Gastner-Newman diffusion algorithm"
+readme = "README.md"
+license = {file = "LICENSE.txt"}
+authors = [
+    {name = "Benjamin F. Maier", email = "benjaminfrankmaier@gmail.com"}
+]
+maintainers = [
+    {name = "Benjamin F. Maier", email = "benjaminfrankmaier@gmail.com"}
+]
+keywords = [
+    "cartogram",
+    "visualization",
+    "geography",
+    "maps",
+    "gastner-newman",
+    "diffusion",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+requires-python = ">=3.9"
+
+dependencies = [
+    "numpy>=1.20.0",
+    "scipy>=1.7.0",
+    "matplotlib>=3.5.0",
+    "shapely>=2.0.0",
+    "progressbar2>=4.0.0",
+    "visvalingamwyatt>=0.2.0",
+    "tqdm>=4.60.0",
+]
+
+[project.optional-dependencies]
+geo = [
+    "cartopy>=0.21.0",
+    "geopandas>=0.13.0",
+    "pandas>=1.5.0",
+    "easing-functions>=1.0.4",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+all = [
+    "pycartogram[geo,dev]",
+]
+
+[project.urls]
+Homepage = "https://github.com/benmaier/pycartogram"
+Repository = "https://github.com/benmaier/pycartogram"
+Issues = "https://github.com/benmaier/pycartogram/issues"
+
+[tool.setuptools]
+packages = ["pycartogram"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+pycartogram = ["data/*"]
