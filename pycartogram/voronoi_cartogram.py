@@ -6,15 +6,20 @@ that use Voronoi tessellation to partition space based on point density.
 Each Voronoi cell's area is inversely proportional to local point density.
 """
 
-from __future__ import print_function
+from __future__ import annotations
+
+from typing import Any
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
 import shapely.geometry as sgeom
 from shapely.ops import unary_union
 from shapely.geometry import Polygon
 from pycartogram.tools import polygon_patch, voronoi_finite_polygons_2d
 import matplotlib as mpl
 import matplotlib.pyplot as pl
-from matplotlib import collections  as mplcoll
+from matplotlib import collections as mplcoll
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 import cCartogram as cart
 from pycartogram import WardCartogram
 from pycartogram import PointCartogram
@@ -69,14 +74,15 @@ class VoronoiCartogram(PointCartogram):
     >>> fig, ax = carto.plot_voronoi(bg_color='k')
     """
 
-    def __init__(self,
-                 points,
-                 wards=None,
-                 margin_ratio=0,
-                 map_orientation='landscape',
-                 x_raster_size=1024,
-                 y_raster_size=768,
-                 ):
+    def __init__(
+        self,
+        points: ArrayLike,
+        wards: list[Polygon] | None = None,
+        margin_ratio: float = 0,
+        map_orientation: str = 'landscape',
+        x_raster_size: int = 1024,
+        y_raster_size: int = 768,
+    ) -> None:
         """Initialize Voronoi cartogram and compute tessellation."""
 
         PointCartogram.__init__(self,
@@ -91,7 +97,7 @@ class VoronoiCartogram(PointCartogram):
         self.compute()
 
 
-    def cast_density_to_matrix(self, verbose=False):
+    def cast_density_to_matrix(self, verbose: bool = False) -> NDArray[np.floating]:
         """
         Rasterize point locations to density matrix.
 
@@ -111,7 +117,7 @@ class VoronoiCartogram(PointCartogram):
         self.density_matrix = self.cast_points_to_matrix(self.points, verbose, replace_value_zero=False)
         return self.density_matrix
 
-    def compute(self, verbose=False):
+    def compute(self, verbose: bool = False) -> None:
         """
         Compute the Voronoi tessellation.
 
@@ -125,7 +131,7 @@ class VoronoiCartogram(PointCartogram):
         self.cast_density_to_matrix(verbose)
         self.compute_voronoi(verbose=verbose)
 
-    def compute_voronoi(self, verbose=False):
+    def compute_voronoi(self, verbose: bool = False) -> None:
         """
         Compute Voronoi tessellation from rasterized point locations.
 
@@ -192,12 +198,14 @@ class VoronoiCartogram(PointCartogram):
 
 
 
-    def plot_voronoi(self,
-                     draw_point_network=True,
-                     network_color=[1, 1, 1],
-                     network_alpha=0.5,
-                     network_linewidth=1,
-                     **kwargs):
+    def plot_voronoi(
+        self,
+        draw_point_network: bool = True,
+        network_color: Any = [1, 1, 1],
+        network_alpha: float = 0.5,
+        network_linewidth: float = 1,
+        **kwargs: Any,
+    ) -> tuple[Figure, Axes]:
         """
         Plot the Voronoi tessellation with optional network overlay.
 

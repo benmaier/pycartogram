@@ -6,9 +6,9 @@ cartograms directly from GeoPandas GeoDataFrames, with support for
 interpolated animations between original and transformed geometries.
 """
 
-#GDAL_LIBRARY_PATH = "/usr/local/lib/libgdal.dylib"
-#import ctypes
-#ctypes.CDLL(GDAL_LIBRARY_PATH)
+from __future__ import annotations
+
+from typing import Any
 import numpy as np
 import geopandas as gpd
 import pandas as pd
@@ -64,14 +64,15 @@ class GeoDataFrameWardCartogram(WardCartogram):
     >>> new_gdf = carto.get_cartogram_geo_df()
     """
 
-    def __init__(self,
-                 geo_df,
-                 ward_density_column,
-                 margin_ratio=0.2,
-                 map_orientation='landscape',
-                 x_raster_size=1024,
-                 y_raster_size=768,
-                 ):
+    def __init__(
+        self,
+        geo_df: gpd.GeoDataFrame,
+        ward_density_column: str,
+        margin_ratio: float = 0.2,
+        map_orientation: str = 'landscape',
+        x_raster_size: int = 1024,
+        y_raster_size: int = 768,
+    ) -> None:
         """Initialize cartogram from GeoDataFrame."""
 
         # loop through 
@@ -109,7 +110,7 @@ class GeoDataFrameWardCartogram(WardCartogram):
                                     y_raster_size,
                                 )
 
-    def get_enriched_original_geo_df(self):
+    def get_enriched_original_geo_df(self) -> gpd.GeoDataFrame:
         """
         Get original geometry with enriched vertices for smooth animation.
 
@@ -124,7 +125,7 @@ class GeoDataFrameWardCartogram(WardCartogram):
         """
         return self._get_geo_df(self.new_old_wards)
 
-    def get_cartogram_geo_df(self):
+    def get_cartogram_geo_df(self) -> gpd.GeoDataFrame:
         """
         Get the computed cartogram as a GeoDataFrame.
 
@@ -135,7 +136,7 @@ class GeoDataFrameWardCartogram(WardCartogram):
         """
         return self._get_geo_df(self.new_wards)
 
-    def get_interpolated_geo_df(self, t, ease='QuadEaseInOut'):
+    def get_interpolated_geo_df(self, t: float, ease: str = 'QuadEaseInOut') -> gpd.GeoDataFrame:
         """
         Get an interpolated GeoDataFrame between original and cartogram.
 
@@ -193,7 +194,7 @@ class GeoDataFrameWardCartogram(WardCartogram):
         return self._get_geo_df(wards)
 
 
-    def _get_geo_df(self, wards):
+    def _get_geo_df(self, wards: list[Polygon]) -> gpd.GeoDataFrame:
         """
         Convert ward polygons back to a GeoDataFrame.
 
@@ -222,7 +223,7 @@ class GeoDataFrameWardCartogram(WardCartogram):
         gdf['geometry'] = new_geometry
         return gdf
 
-    def _get_custom_json(self, wards, label):
+    def _get_custom_json(self, wards: list[Polygon], label: str) -> dict[str, Any]:
         """
         Export wards to custom JSON format for web visualization.
 
@@ -325,7 +326,7 @@ class GeoDataFrameWardCartogram(WardCartogram):
 
         return this_data
 
-    def get_enriched_original_as_custom_json(self, df, label='original'):
+    def get_enriched_original_as_custom_json(self, df: Any, label: str = 'original') -> dict[str, Any]:
         """
         Export enriched original geometry to custom JSON format.
 
@@ -343,7 +344,7 @@ class GeoDataFrameWardCartogram(WardCartogram):
         """
         return self._get_custom_json(self.new_old_wards, label)
 
-    def get_cartogram_as_custom_json(self, df, label='cartogram'):
+    def get_cartogram_as_custom_json(self, df: Any, label: str = 'cartogram') -> dict[str, Any]:
         """
         Export cartogram geometry to custom JSON format.
 
@@ -362,7 +363,7 @@ class GeoDataFrameWardCartogram(WardCartogram):
         return self._get_custom_json(self.new_wards, label)
 
 
-def merge_custom_jsons(*list_of_custom_jsons):
+def merge_custom_jsons(*list_of_custom_jsons: dict[str, Any]) -> dict[str, Any]:
     """
     Merge multiple single-map JSONs into a multi-map structure.
 

@@ -9,17 +9,27 @@ This module provides helper functions for:
 - Computing polygon adjacency networks
 """
 
+from __future__ import annotations
+
+from typing import Any, Callable, Generator, Sequence, Union
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
 import matplotlib.pyplot as pl
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch
 from shapely.geometry import Polygon, LineString, MultiPolygon, Point
 from shapely.ops import polygonize
+from scipy.spatial import Voronoi
 import itertools
 import visvalingamwyatt as vw
 
 
-def polygon_patch(polygon, **kwargs):
+def polygon_patch(
+    polygon: Union[Polygon, MultiPolygon],
+    **kwargs: Any
+) -> PathPatch:
     """
     Create a matplotlib PathPatch from a shapely Polygon or MultiPolygon.
 
@@ -91,7 +101,7 @@ def polygon_patch(polygon, **kwargs):
     path = Path(vertices, codes)
     return PathPatch(path, **kwargs)
 
-def pair_iterate(l):
+def pair_iterate(l: Sequence[Any]) -> Generator[tuple[Any, Any], None, None]:
     """
     Iterate over consecutive pairs of elements in a sequence.
 
@@ -114,7 +124,7 @@ def pair_iterate(l):
         yield l[i-1], l[i]
 
 
-def enrich_polygon_with_points(geom, delta):
+def enrich_polygon_with_points(geom: Polygon, delta: float) -> Polygon:
     """
     Add interpolated points along polygon edges at regular intervals.
 
@@ -148,7 +158,7 @@ def enrich_polygon_with_points(geom, delta):
     return Polygon(coords)
 
 
-def enrich_polygon_to_n_points(geom, n_total):
+def enrich_polygon_to_n_points(geom: Polygon, n_total: int) -> Polygon:
     """
     Enrich a polygon to have exactly n_total vertices.
 
@@ -202,7 +212,7 @@ def enrich_polygon_to_n_points(geom, n_total):
     return Polygon(coords)
 
 
-def get_cumulative_relative_exterior_length(geom):
+def get_cumulative_relative_exterior_length(geom: Polygon) -> NDArray[np.floating]:
     """
     Compute cumulative relative length along polygon exterior.
 
@@ -229,7 +239,7 @@ def get_cumulative_relative_exterior_length(geom):
     return length / length[-1]
 
 
-def match_vertex_count(geom0, geom1):
+def match_vertex_count(geom0: Polygon, geom1: Polygon) -> tuple[Polygon, Polygon]:
     """
     Match vertex counts between two polygons by enriching the shorter one.
 
@@ -289,7 +299,7 @@ def match_vertex_count(geom0, geom1):
         return new_geom, long_geom
 
 
-def savefig_marginless(fn, fig, ax, **kwargs):
+def savefig_marginless(fn: str, fig: Figure, ax: Axes, **kwargs: Any) -> None:
     """
     Save a figure with no margins or whitespace.
 
@@ -314,12 +324,17 @@ def savefig_marginless(fn, fig, ax, **kwargs):
     fig.savefig(fn, bbox_inches='tight', pad_inches=0, **kwargs)
 
 
-def scale(hist,
-          new_min=0.2,
-          new_max=0.9,
-          take_inverse=False,
-          replace_nan=True,
-          get_nan_min_max=False):
+def scale(
+    hist: ArrayLike,
+    new_min: float = 0.2,
+    new_max: float = 0.9,
+    take_inverse: bool = False,
+    replace_nan: bool = True,
+    get_nan_min_max: bool = False,
+) -> Union[
+    tuple[NDArray[np.floating], Callable[[float], float]],
+    tuple[NDArray[np.floating], Callable[[float], float], float, float]
+]:
     """
     Scale values to a new range for visualization.
 
@@ -362,12 +377,17 @@ def scale(hist,
         return scaled, intensity, nan_min, nan_max
 
 
-def logify_and_scale(hist,
-                     new_min=0.2,
-                     new_max=0.9,
-                     take_inverse=False,
-                     replace_nan=True,
-                     get_nan_min_max=False):
+def logify_and_scale(
+    hist: ArrayLike,
+    new_min: float = 0.2,
+    new_max: float = 0.9,
+    take_inverse: bool = False,
+    replace_nan: bool = True,
+    get_nan_min_max: bool = False,
+) -> Union[
+    tuple[NDArray[np.floating], Callable[[float], float]],
+    tuple[NDArray[np.floating], Callable[[float], float], float, float]
+]:
     """
     Apply log transform and scale values to a new range.
 
@@ -416,7 +436,7 @@ def logify_and_scale(hist,
         return log_hist, intensity, nan_min, nan_max
 
 
-def coarse_grain_wards(wards, th):
+def coarse_grain_wards(wards: list[Polygon], th: float) -> list[Polygon]:
     """
     Simplify ward polygons using Visvalingam-Whyatt algorithm.
 
@@ -444,7 +464,7 @@ def coarse_grain_wards(wards, th):
     return new_wards
 
 
-def is_iter(obj):
+def is_iter(obj: Any) -> bool:
     """
     Check if an object is iterable (but not a string).
 
@@ -465,7 +485,7 @@ def is_iter(obj):
         return False
 
 
-def get_json(wards):
+def get_json(wards: list[Polygon]) -> list[list[list[float]]]:
     """
     Convert ward polygons to JSON-serializable format.
 
@@ -486,7 +506,7 @@ def get_json(wards):
     return polygons
 
 
-def get_polygon_network(wards):
+def get_polygon_network(wards: list[Polygon]) -> list[tuple[int, int]]:
     """
     Build adjacency network of touching polygons.
 
@@ -507,7 +527,7 @@ def get_polygon_network(wards):
     return edges
 
 
-def add_intersection_points_to_wards(wards):
+def add_intersection_points_to_wards(wards: list[Polygon]) -> None:
     """
     Add shared boundary points between adjacent wards.
 
@@ -540,7 +560,10 @@ def add_intersection_points_to_wards(wards):
                 g1 = result[1]
 
 
-def voronoi_finite_polygons_2d(vor, radius=None):
+def voronoi_finite_polygons_2d(
+    vor: Voronoi,
+    radius: float | None = None
+) -> tuple[list[list[int]], NDArray[np.floating]]:
     """
     copied from https://gist.github.com/pv/8036995
 

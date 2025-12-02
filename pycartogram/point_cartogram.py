@@ -5,13 +5,19 @@ This module provides the PointCartogram class for creating cartograms
 directly from point location data, without requiring predefined ward densities.
 """
 
+from __future__ import annotations
+
+from typing import Any
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
 import shapely.geometry as sgeom
 from shapely.ops import unary_union
 from shapely.geometry import Polygon
 from pycartogram.tools import polygon_patch
 import matplotlib as mpl
 import matplotlib.pyplot as pl
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 import cCartogram as cart
 from pycartogram import WardCartogram
 import visvalingamwyatt as vw
@@ -58,14 +64,16 @@ class PointCartogram(WardCartogram):
     >>> carto.plot_points()
     """
 
-    def __init__(self,
-                 points,
-                 wards=None,
-                 norm_density=False,
-                 margin_ratio=0.2,
-                 map_orientation='landscape',
-                 x_raster_size=1024,
-                 y_raster_size=768):
+    def __init__(
+        self,
+        points: ArrayLike,
+        wards: list[Polygon] | None = None,
+        norm_density: bool = False,
+        margin_ratio: float = 0.2,
+        map_orientation: str = 'landscape',
+        x_raster_size: int = 1024,
+        y_raster_size: int = 768,
+    ) -> None:
         """Initialize point cartogram with point data and optional wards."""
         self.no_wards_given = wards is None
         ward_density = None
@@ -89,13 +97,13 @@ class PointCartogram(WardCartogram):
                                y_raster_size = y_raster_size,
                               )
 
-    def _get_whole_shape_matrix(self, verbose=False):
+    def _get_whole_shape_matrix(self, verbose: bool = False) -> NDArray[np.floating]:
         """Create binary matrix marking the whole shape area."""
         A = np.zeros((self.xsize, self.ysize))
         self._mark_matrix_with_shape(A, self.whole_shape)
         return A
 
-    def cast_density_to_matrix(self, verbose=False):
+    def cast_density_to_matrix(self, verbose: bool = False) -> NDArray[np.floating]:
         """
         Rasterize point locations to density matrix.
 
@@ -112,7 +120,7 @@ class PointCartogram(WardCartogram):
         self.density_matrix = self.cast_points_to_matrix(self.points, verbose)
         return self.density_matrix
 
-    def compute(self, verbose=False):
+    def compute(self, verbose: bool = False) -> None:
         """
         Compute the complete point cartogram transformation.
 
@@ -132,17 +140,19 @@ class PointCartogram(WardCartogram):
         n_ = len(x)
         self.new_points = np.concatenate((x.reshape(n_, 1), y.reshape(n_, 1)), axis=1)
 
-    def plot_points(self,
-                    ax=None,
-                    show_density_matrix=False,
-                    show_new_points=True,
-                    plot_wards=True,
-                    ward_colors='None',
-                    bg_color='w',
-                    edge_colors=None,
-                    outline_whole_shape=True,
-                    use_new_density=False,
-                    **kwargs):
+    def plot_points(
+        self,
+        ax: Axes | None = None,
+        show_density_matrix: bool = False,
+        show_new_points: bool = True,
+        plot_wards: bool = True,
+        ward_colors: Any = 'None',
+        bg_color: Any = 'w',
+        edge_colors: Any = None,
+        outline_whole_shape: bool = True,
+        use_new_density: bool = False,
+        **kwargs: Any,
+    ) -> tuple[Figure, Axes] | Axes:
         """
         Plot points on the cartogram.
 

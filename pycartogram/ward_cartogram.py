@@ -8,7 +8,11 @@ A cartogram is a map where regions are distorted so their area becomes
 proportional to a variable of interest (e.g., population, GDP).
 """
 
+from __future__ import annotations
+
+from typing import Any, Union
 import numpy as np
+from numpy.typing import ArrayLike, NDArray
 import shapely.geometry as sgeom
 from shapely.ops import unary_union, polygonize
 from shapely.geometry import Polygon, LineString, MultiPolygon, Point
@@ -23,6 +27,8 @@ from pycartogram.tools import (
 )
 import matplotlib as mpl
 import matplotlib.pyplot as pl
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 from matplotlib.path import Path
 import cCartogram as cart
 from tqdm import tqdm
@@ -78,15 +84,17 @@ class WardCartogram:
     >>> carto.plot()
     """
 
-    def __init__(self,
-                 wards,
-                 ward_density,
-                 norm_density=False,
-                 margin_ratio=0.2,
-                 map_orientation='landscape',
-                 x_raster_size=1024,
-                 y_raster_size=768,
-                 threshold_for_polygon_coarse_graining=None):
+    def __init__(
+        self,
+        wards: list[Polygon],
+        ward_density: list[float] | None,
+        norm_density: bool = False,
+        margin_ratio: float = 0.2,
+        map_orientation: str = 'landscape',
+        x_raster_size: int = 1024,
+        y_raster_size: int = 768,
+        threshold_for_polygon_coarse_graining: float | None = None,
+    ) -> None:
         """Initialize the cartogram with wards and density values."""
 
         self.ward_density = ward_density
@@ -116,7 +124,7 @@ class WardCartogram:
         self.cartogram = None
         self.ward_matrix_coordinates = None
 
-    def enrich_wards_with_points(self, delta_for_enrichment=None):
+    def enrich_wards_with_points(self, delta_for_enrichment: float | None = None) -> None:
         """
         Add interpolated points to ward boundaries.
 
@@ -132,7 +140,13 @@ class WardCartogram:
 
         self.wards = [enrich_polygon_with_points(ward, delta_for_enrichment) for ward in self.wards]
 
-    def _mark_matrix_with_shape(self, A_, shape, new_val=1., old_val=None):
+    def _mark_matrix_with_shape(
+        self,
+        A_: NDArray[np.floating],
+        shape: Polygon,
+        new_val: float = 1.,
+        old_val: float | None = None,
+    ) -> None:
         """
         Rasterize a polygon onto a matrix.
 
@@ -169,7 +183,11 @@ class WardCartogram:
         # Set values
         A_[inside] = new_val
 
-    def compute_ward_density_from_locations(self, locations, verbose=False):
+    def compute_ward_density_from_locations(
+        self,
+        locations: ArrayLike | list[Point],
+        verbose: bool = False,
+    ) -> NDArray[np.floating]:
         """
         Compute ward densities from point locations.
 
@@ -257,11 +275,13 @@ class WardCartogram:
         return self.ward_density
 
 
-    def compute_bounding_box(self,
-                             margin_ratio=0.1,
-                             map_orientation='landscape',
-                             x_raster_size=1024,
-                             y_raster_size=768):
+    def compute_bounding_box(
+        self,
+        margin_ratio: float = 0.1,
+        map_orientation: str = 'landscape',
+        x_raster_size: int = 1024,
+        y_raster_size: int = 768,
+    ) -> None:
         """
         Compute the bounding box and coordinate transforms for the raster grid.
 
@@ -324,7 +344,7 @@ class WardCartogram:
         self.i_from_x = lambda x: (x - size_x / 2. - x_[0] ) / size_x
         self.j_from_y = lambda y: (y - size_y / 2. - y_[0] ) / size_y
 
-    def _get_matrix_coordinate_bounds(self,ward):
+    def _get_matrix_coordinate_bounds(self, ward: Polygon) -> tuple[int, int, int, int]:
         x0 = self.big_bbox.bounds[0]
         y0 = self.big_bbox.bounds[1]
         x_ = (ward.bounds[0]-x0,ward.bounds[2]-x0)
@@ -335,7 +355,7 @@ class WardCartogram:
         jmax = int(np.ceil(y_[1]/self.tile_size))
         return imin, imax, jmin, jmax
 
-    def get_ward_bounds(self,shape=None):
+    def get_ward_bounds(self, shape: Polygon | None = None) -> tuple[tuple[float, float], tuple[float, float]]:
 
         if shape is None:
             shape = self.whole_shape
@@ -350,7 +370,7 @@ class WardCartogram:
 
         return x_, y_
 
-    def _process_wards(self):
+    def _process_wards(self) -> None:
         self.whole_shape = unary_union(self.wards)
         x_, y_ = self.get_ward_bounds()
 
@@ -362,7 +382,12 @@ class WardCartogram:
         self.orig_width = x_[1] - x_[0]
         self.orig_height = y_[1] - y_[0]
 
-    def fast_density_to_matrix(self, verbose=False, set_boundary_to='mean', **kwargs):
+    def fast_density_to_matrix(
+        self,
+        verbose: bool = False,
+        set_boundary_to: str | float = 'mean',
+        **kwargs: Any,
+    ) -> NDArray[np.floating]:
         """
         Fast rasterization of ward densities to matrix using polygon filling.
 
@@ -397,7 +422,13 @@ class WardCartogram:
         self.density_matrix = density
         return self.density_matrix
 
-    def cast_density_to_matrix(self,verbose=False,set_boundary_to='mean',ward_matrix_coordinates=[],**kwargs):
+    def cast_density_to_matrix(
+        self,
+        verbose: bool = False,
+        set_boundary_to: str | float = 'mean',
+        ward_matrix_coordinates: list[list[tuple[int, int]]] = [],
+        **kwargs: Any,
+    ) -> NDArray[np.floating]:
 
         ward_dens =  np.array(self.ward_density)
         nnz = ward_dens[ward_dens>0.]
@@ -487,11 +518,12 @@ class WardCartogram:
         self.density_matrix = density
         return self.density_matrix
 
-    def cast_points_to_matrix(self,
-                              locations,
-                              verbose = False,
-                              replace_value_zero = True,
-                              ):
+    def cast_points_to_matrix(
+        self,
+        locations: ArrayLike,
+        verbose: bool = False,
+        replace_value_zero: bool = True,
+    ) -> NDArray[np.floating]:
 
         if type(locations[0]) == Point:
             # convert to array
@@ -537,7 +569,11 @@ class WardCartogram:
 
         return density
 
-    def transform_coords(self,x,y):
+    def transform_coords(
+        self,
+        x: ArrayLike,
+        y: ArrayLike,
+    ) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
         old_x = x
         old_y = y
         i_ = self.i_from_x(np.array(old_x))
@@ -552,7 +588,13 @@ class WardCartogram:
 
         return new_x, new_y
 
-    def compute_cartogram(self,offset=0.005,blur=0.,verbose=False,**kwargs):
+    def compute_cartogram(
+        self,
+        offset: float = 0.005,
+        blur: float = 0.,
+        verbose: bool = False,
+        **kwargs: Any,
+    ) -> None:
 
         if verbose:
             print()
@@ -565,11 +607,13 @@ class WardCartogram:
                                             )
         return self.cartogram
 
-    def transform_wards(self,
-                        verbose=False,
-                        ignore_self_intersection=True,
-                        enrich_wards_with_points=True,
-                        delta_for_enrichment=None):
+    def transform_wards(
+        self,
+        verbose: bool = False,
+        ignore_self_intersection: bool = True,
+        enrich_wards_with_points: bool = True,
+        delta_for_enrichment: float | None = None,
+    ) -> list[Polygon]:
 
         if delta_for_enrichment is None:
             delta_for_enrichment = self.tile_size
@@ -694,7 +738,7 @@ class WardCartogram:
 
         return self.new_wards
 
-    def compute(self, verbose=False, **kwargs):
+    def compute(self, verbose: bool = False, **kwargs: Any) -> list[Polygon]:
         """
         Compute the complete cartogram transformation.
 
@@ -719,22 +763,24 @@ class WardCartogram:
             self.compute_cartogram(verbose=verbose)
         return self.transform_wards(verbose)
 
-    def _convert_wards_to_list(self,wards):
+    def _convert_wards_to_list(self, wards: list[Polygon]) -> list[Polygon]:
         """return list of wards if a dictionary was supplied"""
         pass
 
-    def plot(self,
-             ax=None,
-             show_density_matrix=False,
-             show_new_wards=True,
-             ward_colors=None,
-             bg_color='w',
-             edge_colors=None,
-             outline_whole_shape=True,
-             whole_shape_color=[0.05, 0., 0.],
-             whole_shape_linewidth=1,
-             use_new_density=False,
-             intensity_range=[0.1, 0.9]):
+    def plot(
+        self,
+        ax: Axes | None = None,
+        show_density_matrix: bool = False,
+        show_new_wards: bool = True,
+        ward_colors: str | list[Any] | None = None,
+        bg_color: str | list[float] = 'w',
+        edge_colors: str | list[Any] | None = None,
+        outline_whole_shape: bool = True,
+        whole_shape_color: list[float] = [0.05, 0., 0.],
+        whole_shape_linewidth: float = 1,
+        use_new_density: bool = False,
+        intensity_range: list[float] = [0.1, 0.9],
+    ) -> tuple[Figure, Axes] | Axes:
         """
         Plot the cartogram.
 

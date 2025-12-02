@@ -6,12 +6,16 @@ location history data and projecting it onto geographic regions (wards)
 for use with pycartogram's cartogram generation.
 """
 
+from __future__ import annotations
+
+from typing import Any
 import cartopy.crs as ccrs
 import numpy as np
 from cartopy.io.shapereader import Reader
 import json
 import shapely.geometry as sgeom
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, Point
+from matplotlib.axes import Axes
 from pycartogram.tools import (
     polygon_patch,
     enrich_polygon_with_points,
@@ -68,15 +72,16 @@ class GoogleShapeProject():
         Flattened list of all relevant points.
     """
 
-    def __init__(self,
-                 shape_file,
-                 google_file,
-                 lon_lat_list=None,
-                 shape_source_proj=ccrs.PlateCarree(),
-                 google_source_proj=ccrs.PlateCarree(),
-                 target_proj=ccrs.UTM(zone=33, southern_hemisphere=False),  # used to be '33N'
-                 minimum_time_as_unix_seconds=0,
-                 ):
+    def __init__(
+        self,
+        shape_file: str,
+        google_file: str | None,
+        lon_lat_list: list[tuple[float, float]] | None = None,
+        shape_source_proj: ccrs.CRS = ccrs.PlateCarree(),
+        google_source_proj: ccrs.CRS = ccrs.PlateCarree(),
+        target_proj: ccrs.CRS = ccrs.UTM(zone=33, southern_hemisphere=False),
+        minimum_time_as_unix_seconds: float = 0,
+    ) -> None:
 
         # load the single (the first) polygon from 
         # each multipolygon represnting an electoral district
@@ -172,7 +177,13 @@ class GoogleShapeProject():
             self.all_relevant_points = self.relevant_points
             
 
-    def label_this(ax, wards, labels, key='PLZ99'):
+    def label_this(
+        self,
+        ax: Axes,
+        wards: list[Polygon],
+        labels: dict[str, str],
+        key: str = 'PLZ99',
+    ) -> None:
         """
         Add text labels to wards on a matplotlib axes.
 
@@ -200,7 +211,12 @@ class GoogleShapeProject():
                         fontsize='small'
                        )
 
-    def export_json(self, carto, additional_data=None, export_rec_attributes=[]):
+    def export_json(
+        self,
+        carto: Any,
+        additional_data: dict[str, Any] | None = None,
+        export_rec_attributes: list[str] | None = None,
+    ) -> dict[str, Any]:
         """
         Export cartogram data to JSON format.
 
@@ -219,6 +235,8 @@ class GoogleShapeProject():
             JSON-serializable dictionary with original and transformed
             ward coordinates, domain bounds, and ward attributes.
         """
+        if export_rec_attributes is None:
+            export_rec_attributes = []
         export = { 
                    'attributes': [],
                    'domain':{ 'x': (self.orig_bbox.bounds[0],self.orig_bbox.bounds[2]),
@@ -241,7 +259,14 @@ class GoogleShapeProject():
         return export
         
 
-    def _export_json(self, new_wards, delta, old_wards=None, additional_data=None, export_rec_attributes=[]):
+    def _export_json(
+        self,
+        new_wards: list[Polygon],
+        delta: float,
+        old_wards: list[Polygon] | None = None,
+        additional_data: dict[str, Any] | None = None,
+        export_rec_attributes: list[str] | None = None,
+    ) -> dict[str, Any]:
         """
         Export ward data to JSON with polygon enrichment.
 
@@ -267,6 +292,8 @@ class GoogleShapeProject():
             JSON-serializable dictionary with enriched original and
             transformed ward coordinates.
         """
+        if export_rec_attributes is None:
+            export_rec_attributes = []
         export = { 
                    'attributes': [],
                    'domain':{ 'x': (self.orig_bbox.bounds[0],self.orig_bbox.bounds[2]),
