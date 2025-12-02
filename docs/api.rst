@@ -10,3 +10,4 @@ API Reference
    api/geopandas_cartogram
    api/google_loader
    api/tools
+   api/ccartogram
