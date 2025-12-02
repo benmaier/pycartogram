@@ -92,7 +92,7 @@ class GeoDataFrameWardCartogram(WardCartogram):
                 self.ward_indices[ipoly].append(i)
                 i += 1
             elif isinstance(poly, MultiPolygon):
-                for _poly in list(poly):
+                for _poly in poly.geoms:
                     wards.append(_poly)
                     ward_density.append(dens)
                     self.ward_indices[ipoly].append(i)
@@ -217,7 +217,7 @@ class GeoDataFrameWardCartogram(WardCartogram):
             if len(indices) == 1:
                 new_geometry.append(wards[indices[0]])
             else:
-                these_polygons = [ wards[ndx] for ndx in indices ]
+                these_polygons = [wards[ndx] for ndx in indices]
                 this_shape = MultiPolygon(these_polygons)
                 new_geometry.append(this_shape)
         gdf['geometry'] = new_geometry

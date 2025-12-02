@@ -20,6 +20,7 @@ from matplotlib.axes import Axes
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch
 from shapely.geometry import Polygon, LineString, MultiPolygon, Point
+from shapely.validation import make_valid
 from shapely.ops import polygonize
 from scipy.spatial import Voronoi
 import itertools
@@ -297,6 +298,63 @@ def match_vertex_count(geom0: Polygon, geom1: Polygon) -> tuple[Polygon, Polygon
         return long_geom, new_geom
     else:
         return new_geom, long_geom
+
+
+def fix_invalid_geometry(geom: Polygon) -> Polygon:
+    """
+    Fix invalid geometry while preserving Polygon type.
+
+    Uses shapely's make_valid to fix self-intersections and other
+    topology issues. If make_valid produces a MultiPolygon (from
+    splitting a self-intersecting polygon), returns only the largest
+    polygon by area.
+
+    Parameters
+    ----------
+    geom : shapely.geometry.Polygon
+        Input polygon that may be invalid.
+
+    Returns
+    -------
+    shapely.geometry.Polygon
+        Valid polygon geometry.
+    """
+    if geom.is_valid:
+        return geom
+    fixed = make_valid(geom)
+    if isinstance(fixed, MultiPolygon):
+        return max(fixed.geoms, key=lambda g: g.area)
+    return fixed
+
+
+def fix_geodataframe_geometries(gdf: "gpd.GeoDataFrame") -> "gpd.GeoDataFrame":
+    """
+    Return a copy of a GeoDataFrame with all geometries made valid.
+
+    Useful before operations like dissolve() that require valid geometries.
+    Note: This fixes geometries independently, which may break topological
+    consistency between neighboring polygons. Use only when necessary
+    (e.g., before dissolve), not for rendering where seamless boundaries matter.
+
+    Parameters
+    ----------
+    gdf : geopandas.GeoDataFrame
+        Input GeoDataFrame with potentially invalid geometries.
+
+    Returns
+    -------
+    geopandas.GeoDataFrame
+        Copy of input with all geometries validated.
+
+    Examples
+    --------
+    >>> # Before dissolve, fix geometries to avoid TopologyException
+    >>> gdf_valid = fix_geodataframe_geometries(gdf)
+    >>> states = gdf_valid.dissolve(by="STATE_ID")
+    """
+    result = gdf.copy()
+    result["geometry"] = result["geometry"].apply(fix_invalid_geometry)
+    return result
 
 
 def savefig_marginless(fn: str, fig: Figure, ax: Axes, **kwargs: Any) -> None:

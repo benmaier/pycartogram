@@ -696,6 +696,20 @@ class WardCartogram:
 
         self.new_ward_density = np.array(new_ward_density)
         self.new_wards = new_wards
+
+        # Check for invalid geometries and warn
+        invalid_indices = [i for i, w in enumerate(new_wards) if not w.is_valid]
+        if invalid_indices:
+            import warnings
+            warnings.warn(
+                f"Cartogram produced {len(invalid_indices)} invalid (self-intersecting) polygon(s) "
+                f"at indices: {invalid_indices}. This typically occurs when there aren't enough "
+                f"vertices to represent the deformation. Consider enriching the original geometries "
+                f"with more points. To fix invalid geometries before operations like dissolve(), use "
+                f"pycartogram.tools.fix_invalid_geometry() for single polygons or "
+                f"pycartogram.tools.fix_geodataframe_geometries() for GeoDataFrames."
+            )
+
         #self.new_whole_shape = cascaded_union(new_wards)
 
         # this is such a dirty hack
