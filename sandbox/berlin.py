@@ -6,6 +6,15 @@ from shapely.geometry import Polygon
 import pycartogram
 
 import matplotlib.pyplot as pl
+import matplotlib.colors as mcolors
+from colorsys import hsv_to_rgb
+
+def random_harmonious_colors(n, saturation=0.5, value=0.85, seed=None):
+    """Generate n random colors with consistent saturation and brightness."""
+    if seed is not None:
+        np.random.seed(seed)
+    hues = np.random.random(n)
+    return [hsv_to_rgb(h, saturation, value) for h in hues]
 
 def get_random_exponential(carto):
 
@@ -85,9 +94,12 @@ carto.plot(show_new_wards=False,
            ax=ax[1,0])
 ax[1,0].set_title('ward bins as polygons')
 
+# Random but harmonious colors (pastel-ish, same saturation/brightness)
+ward_colors = random_harmonious_colors(len(berlin_wards), saturation=0.45, value=0.9, seed=42)
+
 carto.plot(
-        ward_colors = np.random.random((len(berlin_wards),3)),
-        edge_colors = 'k',
+        ward_colors = ward_colors,
+        edge_colors = 'w',
         ax=ax[1,1])
 ax[1,1].set_title('cartogram after ward binning')
 
@@ -114,8 +126,8 @@ carto_point.compute(verbose=True)
 carto_point.transform_wards(verbose=True)
 
 carto_point.plot(
-        ward_colors = np.random.random((len(berlin_wards),3)),
-        edge_colors = 'k',
+        ward_colors = random_harmonious_colors(1, saturation=0.45, value=0.9, seed=7),
+        edge_colors = 'w',
         ax=ax[1,2])
 ax[1,2].set_title('cartogram after pixel binning')
 
