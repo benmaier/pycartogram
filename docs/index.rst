@@ -65,6 +65,7 @@ Quick Start
    :caption: Contents:
 
    usage
+   examples
    api
 
 Indices and tables

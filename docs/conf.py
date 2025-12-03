@@ -27,7 +27,12 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
     'myst_parser',
+    'nbsphinx',
 ]
+
+# nbsphinx settings
+nbsphinx_execute = 'never'  # Don't execute notebooks during build
+nbsphinx_allow_errors = True  # Continue build even if notebooks have errors
 
 # Napoleon settings for NumPy-style docstrings
 napoleon_google_docstring = False

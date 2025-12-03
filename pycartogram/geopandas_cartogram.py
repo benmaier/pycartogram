@@ -75,7 +75,7 @@ class GeoDataFrameWardCartogram(WardCartogram):
     ) -> None:
         """Initialize cartogram from GeoDataFrame."""
 
-        # loop through 
+        # loop through
 
         self.gdf = geo_df.copy()
         polygons = geo_df.geometry.to_list()
@@ -487,7 +487,7 @@ if __name__ == "__main__":
 
     carto.compute(verbose=True)
 
-    
+
     new_gdf = carto.get_cartogram_geo_df()
     #new_gdf.plot()
 

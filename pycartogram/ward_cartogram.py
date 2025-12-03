@@ -9,6 +9,7 @@ proportional to a variable of interest (e.g., population, GDP).
 """
 
 from __future__ import annotations
+import warnings
 
 from typing import Any, Union
 import numpy as np
@@ -24,6 +25,7 @@ from pycartogram.tools import (
     scale,
     logify_and_scale,
     is_iter,
+    fix_invalid_geometry,
 )
 import matplotlib as mpl
 import matplotlib.pyplot as pl
@@ -150,7 +152,8 @@ class WardCartogram:
         """
         Rasterize a polygon onto a matrix.
 
-        Uses matplotlib.path.contains_points for fast vectorized computation.
+        Uses matplotlib.path.contains_points for fast vectorized computation,
+        with bounding box optimization to only test pixels within the shape's bounds.
 
         Parameters
         ----------
@@ -163,9 +166,12 @@ class WardCartogram:
         old_val : float, optional
             Unused, kept for API compatibility.
         """
-        # Create grid of all matrix coordinates
-        i_coords = np.arange(A_.shape[0])
-        j_coords = np.arange(A_.shape[1])
+        # Get bounding box in matrix coordinates
+        imin, imax, jmin, jmax = self._get_matrix_coordinate_bounds(shape)
+
+        # Create grid only for bounding box region
+        i_coords = np.arange(imin, imax)
+        j_coords = np.arange(jmin, jmax)
         ii, jj = np.meshgrid(i_coords, j_coords, indexing='ij')
 
         # Convert matrix indices to world coordinates
@@ -178,10 +184,10 @@ class WardCartogram:
         path = Path(poly_coords)
 
         # Check which points are inside (vectorized, fast)
-        inside = path.contains_points(points).reshape(A_.shape)
+        inside = path.contains_points(points).reshape(ii.shape)
 
-        # Set values
-        A_[inside] = new_val
+        # Set values in the bounding box region
+        A_[imin:imax, jmin:jmax][inside] = new_val
 
     def compute_ward_density_from_locations(
         self,
@@ -415,10 +421,29 @@ class WardCartogram:
         #density = mean_density * np.ones((self.xsize,self.ysize),dtype=float)
         density = np.zeros((self.xsize,self.ysize),dtype=float)
 
+        if verbose:
+            pbar = tqdm(total=len(self.wards), desc="cast density to matrix (fast)")
         for iward, ward in enumerate(self.wards):
             self._mark_matrix_with_shape(density,ward,new_val=ward_dens[iward],old_val=0.)
+            if verbose:
+                pbar.update(1)
+        if verbose:
+            pbar.close()
 
-        density[np.where(density==0.)] = mean_density
+        if isinstance(set_boundary_to,str):
+            if set_boundary_to == 'mean':
+                density[np.where(density==0.)] = mean_density
+            elif set_boundary_to == 'min':
+                density[np.where(density==0.)] = min_density
+            elif set_boundary_to.endswith('percent_mean'):
+                factor = float(set_boundary_to.replace('percent_mean','')) / 100
+                density[np.where(density==0.)] = factor * mean_density
+            elif set_boundary_to.endswith('percent_min'):
+                factor = float(set_boundary_to.replace('percent_min','')) / 100
+                density[np.where(density==0.)] = factor * min_density
+        else:
+            density[np.where(density==0.)] = mean_density
+
         self.density_matrix = density
         return self.density_matrix
 
@@ -431,6 +456,7 @@ class WardCartogram:
     ) -> NDArray[np.floating]:
 
         ward_dens =  np.array(self.ward_density)
+        #print(ward_dens)
         nnz = ward_dens[ward_dens>0.]
         min_density = np.min(nnz)
         mean_density = np.mean(nnz)
@@ -700,7 +726,6 @@ class WardCartogram:
         # Check for invalid geometries and warn
         invalid_indices = [i for i, w in enumerate(new_wards) if not w.is_valid]
         if invalid_indices:
-            import warnings
             warnings.warn(
                 f"Cartogram produced {len(invalid_indices)} invalid (self-intersecting) polygon(s) "
                 f"at indices: {invalid_indices}. This typically occurs when there aren't enough "
@@ -712,12 +737,16 @@ class WardCartogram:
 
         #self.new_whole_shape = cascaded_union(new_wards)
 
+        # Fix geometries only for creating new_whole_shape (union requires valid geometries)
+        # self.new_wards remains raw to preserve topological consistency between neighbors
+        fixed_wards_for_union = [fix_invalid_geometry(w) for w in self.new_wards]
+
         # this is such a dirty hack
         # (this is to prevent a really strange bug in unary_union (or cascaded union)
         # where putting all wards at once raises a TopologyException
         try:
             size = 300
-            chunks = [self.new_wards[size*i:size*(i+1)] for i in range(len(self.new_wards)//size + 1)]
+            chunks = [fixed_wards_for_union[size*i:size*(i+1)] for i in range(len(fixed_wards_for_union)//size + 1)]
             poly1 = unary_union(chunks[0])
             for i,poly2 in enumerate(chunks[1:]):
                 poly1 = unary_union([poly1]+poly2)
@@ -726,10 +755,10 @@ class WardCartogram:
                 print('method produced error')
                 print(e)
                 print('will fall back to slower method')
-                pbar = tqdm(total=len(self.new_wards), desc="joining wards")
+                pbar = tqdm(total=len(fixed_wards_for_union), desc="joining wards")
 
-            poly1 = self.new_wards[0]
-            for i, poly2 in enumerate(self.new_wards[1:]):
+            poly1 = fixed_wards_for_union[0]
+            for i, poly2 in enumerate(fixed_wards_for_union[1:]):
                 poly1 = poly1.union(poly2)
                 if verbose:
                     pbar.update(1)
@@ -794,6 +823,7 @@ class WardCartogram:
         whole_shape_linewidth: float = 1,
         use_new_density: bool = False,
         intensity_range: list[float] = [0.1, 0.9],
+        figsize: tuple[float, float] | None = None,
     ) -> tuple[Figure, Axes] | Axes:
         """
         Plot the cartogram.
@@ -836,7 +866,7 @@ class WardCartogram:
         generate_figure = ax is None
 
         if generate_figure:
-            fig, ax = pl.subplots(1,1)
+            fig, ax = pl.subplots(1, 1, figsize=figsize)
 
         if show_new_wards:
             wards = self.new_wards

@@ -8,28 +8,28 @@ from shapely.geometry import Polygon
 
 
 def get_hexgrid(startx, starty, endx, endy, radius):
-    """ 
+    """
     Calculate a grid of hexagon coordinates of the given radius
-    given lower-left and upper-right coordinates 
+    given lower-left and upper-right coordinates
     Returns a list of lists containing 6 tuples of x, y point coordinates
     These can be used to construct valid regular hexagonal polygons
-    
+
     You will probably want to use projected coordinates for this
     """
-    # calculate side length given radius   
+    # calculate side length given radius
     sl = (2 * radius) * math.tan(math.pi / 6)
     # calculate radius for a given side-length
     # (a * (math.cos(math.pi / 6) / math.sin(math.pi / 6)) / 2)
     # see http://www.calculatorsoup.com/calculators/geometry-plane/polygon.php
-    
+
     # calculate coordinates of the hexagon points
     # sin(30)
     p = sl * 0.5
     b = sl * math.cos(math.radians(30))
     w = b * 2
     h = 2 * sl
-    
-    # offset start and end coordinates by hex widths and heights to guarantee coverage     
+
+    # offset start and end coordinates by hex widths and heights to guarantee coverage
     startx = startx - w
     starty = starty - h
     endx = endx + w

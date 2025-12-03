@@ -120,6 +120,9 @@ class PointCartogram(WardCartogram):
         self.density_matrix = self.cast_points_to_matrix(self.points, verbose)
         return self.density_matrix
 
+    def fast_density_to_matrix(self, verbose: bool = False):
+        return cast_density_to_matrix(verbose=verbose)
+
     def compute(self, verbose: bool = False) -> None:
         """
         Compute the complete point cartogram transformation.
@@ -193,7 +196,7 @@ class PointCartogram(WardCartogram):
             #color[-1] = 0.
             #print(color)
             temp = self.plot(
-                 ax = ax,                    
+                 ax = ax,
                  show_density_matrix = show_density_matrix,
                  show_new_wards = show_new_points,
                  ward_colors = 'None',
@@ -204,7 +207,7 @@ class PointCartogram(WardCartogram):
              )
         else:
             temp = self.plot(
-                 ax = ax,                    
+                 ax = ax,
                  show_density_matrix = show_density_matrix,
                  show_new_wards = show_new_points,
                  ward_colors = ward_colors,
@@ -236,28 +239,28 @@ class PointCartogram(WardCartogram):
         kwargs['ls'] = 'None'
 
         ax.plot(x,y,**kwargs)
-            
+
         if generate_figure:
             return fig, ax
         else:
             return ax
 
 if __name__ == "__main__":
-        A = Polygon([ 
+        A = Polygon([
                       (0.,0.),
                       (1.,0.),
                       (1.,1.),
-                      (0.,1.), 
+                      (0.,1.),
                       (0.,0.),
                     ])
-        B = Polygon([ 
+        B = Polygon([
                       (1.,0.),
                       (2.,0.),
                       (2.,1.),
                       (1.,1.),
                       (1.,0.),
                     ])
-        C = Polygon([ 
+        C = Polygon([
                       (2.,0.),
                       (3.,0.),
                       (3.,1.),
@@ -326,4 +329,4 @@ if __name__ == "__main__":
         pl.show()
 
 
-    
+

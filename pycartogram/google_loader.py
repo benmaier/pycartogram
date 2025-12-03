@@ -83,7 +83,7 @@ class GoogleShapeProject():
         minimum_time_as_unix_seconds: float = 0,
     ) -> None:
 
-        # load the single (the first) polygon from 
+        # load the single (the first) polygon from
         # each multipolygon represnting an electoral district
         # so the end is a list of polygons
         #self.wards = [\
@@ -96,7 +96,7 @@ class GoogleShapeProject():
         for rec in shape_reader.records():
             shape_data.append(rec.geometry[0])
             shape_records.append(rec)
-            
+
         new_shape_data = []
         for geom in shape_data:
             poly_coords = []
@@ -115,7 +115,7 @@ class GoogleShapeProject():
         self.records = shape_records
 
         # cascade each polygon s.t. we get a big polygon representing berlin
-        self.whole_shape = unary_union(self.wards) 
+        self.whole_shape = unary_union(self.wards)
         # get Berlin bounding box as polygon
         x_ = (self.whole_shape.bounds[0],self.whole_shape.bounds[2])
         y_ = (self.whole_shape.bounds[1],self.whole_shape.bounds[3])
@@ -141,7 +141,7 @@ class GoogleShapeProject():
 
             # convert google data to our polygon metric
             ggl_utm33n = [ (
-                            sgeom.Point( 
+                            sgeom.Point(
                                    *target_proj.transform_point(
                                            d[0],
                                            d[1],
@@ -162,8 +162,8 @@ class GoogleShapeProject():
                 self.relevant_points_by_hour[hour].append(point)
                 self.all_relevant_points.append(point)
         elif lon_lat_list is not None:
-            ggl_utm33n = [ 
-                            sgeom.Point( 
+            ggl_utm33n = [
+                            sgeom.Point(
                                    *target_proj.transform_point(
                                            d[0],
                                            d[1],
@@ -175,7 +175,7 @@ class GoogleShapeProject():
             # in the berlin bounding box)
             self.relevant_points = [ d for d in ggl_utm33n if self.orig_bbox.contains(d) ]
             self.all_relevant_points = self.relevant_points
-            
+
 
     def label_this(
         self,
@@ -237,7 +237,7 @@ class GoogleShapeProject():
         """
         if export_rec_attributes is None:
             export_rec_attributes = []
-        export = { 
+        export = {
                    'attributes': [],
                    'domain':{ 'x': (self.orig_bbox.bounds[0],self.orig_bbox.bounds[2]),
                               'y': (self.orig_bbox.bounds[1],self.orig_bbox.bounds[3
@@ -257,7 +257,7 @@ class GoogleShapeProject():
             export.update(additional_data)
 
         return export
-        
+
 
     def _export_json(
         self,
@@ -294,7 +294,7 @@ class GoogleShapeProject():
         """
         if export_rec_attributes is None:
             export_rec_attributes = []
-        export = { 
+        export = {
                    'attributes': [],
                    'domain':{ 'x': (self.orig_bbox.bounds[0],self.orig_bbox.bounds[2]),
                               'y': (self.orig_bbox.bounds[1],self.orig_bbox.bounds[3
@@ -325,9 +325,9 @@ class GoogleShapeProject():
             export.update(additional_data)
 
         return export
-        
 
 
-        
 
-        
+
+
+

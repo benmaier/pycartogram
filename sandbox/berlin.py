@@ -111,7 +111,9 @@ carto_point = pycartogram.PointCartogram(
             margin_ratio = 0.2, # added margin will be this ratio of original width
             )
 
+# for points, there's no fast density
 carto_point.cast_density_to_matrix(verbose=True)
+
 
 carto_point.plot_points(
            show_density_matrix=True,
