@@ -3,6 +3,8 @@
 A Python package for generating cartograms using the diffusion method by
 [Gastner and Newman (2004)](http://www.pnas.org/cgi/content/abstract/101/20/7499).
 
+![US Population Cartogram](https://raw.githubusercontent.com/benmaier/cCartogram/main/uspop_cartogram.png)
+
 This package requires [cCartogram](https://github.com/benmaier/cCartogram), the Python port of Mark Newman's [original C code](http://www-personal.umich.edu/~mejn/cart/).
 
 ## Installation
@@ -130,8 +132,6 @@ carto.compute(verbose=True)
 fig, ax = carto.plot(show_new_wards=True, edge_colors='k')
 plt.show()
 ```
-
-![Quick Start Example](https://raw.githubusercontent.com/benmaier/pycartogram/main/sandbox/img/example_quickstart.png)
 
 ### With GeoPandas
 
