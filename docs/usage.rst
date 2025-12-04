@@ -36,6 +36,10 @@ with associated density values:
    # Access transformed wards
    new_wards = carto.new_wards
 
+.. image:: https://raw.githubusercontent.com/benmaier/pycartogram/main/sandbox/img/example_quickstart.png
+   :alt: Basic WardCartogram Example
+   :width: 600px
+
 Cartogram from Point Data
 -------------------------
 
@@ -58,10 +62,15 @@ use :class:`~pycartogram.PointCartogram`:
        x_raster_size=128,
        y_raster_size=128,
    )
+   carto.cast_density_to_matrix(verbose=True)
    carto.compute(verbose=True)
 
    # Plot original and transformed points
    fig, ax = carto.plot_points()
+
+.. image:: https://raw.githubusercontent.com/benmaier/pycartogram/main/sandbox/img/example_point_cartogram.png
+   :alt: PointCartogram Example
+   :width: 800px
 
 Using with GeoPandas
 --------------------
@@ -114,6 +123,10 @@ The :meth:`~pycartogram.WardCartogram.plot` method supports various options:
 
    # Plot original wards instead of transformed
    fig, ax = carto.plot(show_new_wards=False)
+
+.. image:: https://raw.githubusercontent.com/benmaier/pycartogram/main/sandbox/img/example_plotting_options.png
+   :alt: Plotting Options Example
+   :width: 700px
 
 Parameters Explained
 --------------------

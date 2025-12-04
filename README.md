@@ -7,21 +7,84 @@ This package requires [cCartogram](https://github.com/benmaier/cCartogram), the 
 
 ## Installation
 
+Neither cCartogram nor pycartogram are on PyPI or conda-forge yet. Install from source in this order:
+
+### 1. Install FFTW (required by cCartogram)
+
+**macOS (Homebrew):**
 ```bash
-# Install core package
-pip install pycartogram
-
-# Install with geographic extras (cartopy, geopandas)
-pip install pycartogram[geo]
-
-# Install development dependencies
-pip install pycartogram[dev]
+brew install fftw
 ```
 
-### Prerequisites
+**Ubuntu/Debian:**
+```bash
+sudo apt-get install libfftw3-dev
+```
 
-- **cCartogram**: Install from [GitHub](https://github.com/benmaier/cCartogram)
-- **Cartopy** (optional, for `[geo]`): Requires system libraries `geos` and `proj`
+**conda:**
+```bash
+conda install -c conda-forge fftw
+```
+
+### 2. Install cCartogram
+
+```bash
+pip install git+https://github.com/benmaier/cCartogram.git
+```
+
+### 3. Install pycartogram
+
+```bash
+# Core package
+pip install git+https://github.com/benmaier/pycartogram.git
+
+# With geographic extras (cartopy, geopandas)
+pip install "pycartogram[geo] @ git+https://github.com/benmaier/pycartogram.git"
+```
+
+### Optional: Cartopy system dependencies
+
+For the `[geo]` extras, Cartopy requires system libraries:
+
+**macOS:**
+```bash
+brew install geos proj
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get install libgeos-dev libproj-dev
+```
+
+### Troubleshooting: macOS LC_RPATH Error
+
+If you encounter an error like:
+
+```
+ImportError: dlopen(.../cCartogram.cpython-312-darwin.so...): tried: '...' (duplicate LC_RPATH '/some/path/lib')
+```
+
+This happens when cCartogram's compiled library contains duplicate rpath entries. The error message shows the duplicate path. Fix it using `install_name_tool`:
+
+```bash
+# The .so file path is shown in the error message. Use it directly:
+install_name_tool -delete_rpath '/the/duplicate/path/from/error' '/path/to/cCartogram.cpython-312-darwin.so'
+
+# Example with a real path from the error:
+install_name_tool -delete_rpath '/Users/you/miniconda3/lib' '/Users/you/miniconda3/lib/python3.12/site-packages/cCartogram.cpython-312-darwin.so'
+```
+
+You can verify the fix worked by checking the rpaths:
+
+```bash
+otool -l /path/to/cCartogram.cpython-312-darwin.so | grep -A2 LC_RPATH
+```
+
+Alternatively, reinstall cCartogram from source:
+
+```bash
+pip install --force-reinstall git+https://github.com/benmaier/cCartogram.git
+```
 
 ## Features
 
@@ -67,6 +130,8 @@ carto.compute(verbose=True)
 fig, ax = carto.plot(show_new_wards=True, edge_colors='k')
 plt.show()
 ```
+
+![Quick Start Example](https://raw.githubusercontent.com/benmaier/pycartogram/main/sandbox/img/example_quickstart.png)
 
 ### With GeoPandas
 

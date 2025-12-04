@@ -1,4 +1,4 @@
-C Cartogram Backend
+cCartogram Backend
 ===================
 
 .. module:: cCartogram

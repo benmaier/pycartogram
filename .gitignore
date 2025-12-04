@@ -39,6 +39,9 @@ htmlcov/
 .tox/
 .nox/
 
+# Jupyter
+.ipynb_checkpoints/
+
 # Documentation
 docs/_build/
 
