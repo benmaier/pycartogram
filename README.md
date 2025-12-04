@@ -23,6 +23,20 @@ pip install pycartogram[dev]
 - **cCartogram**: Install from [GitHub](https://github.com/benmaier/cCartogram)
 - **Cartopy** (optional, for `[geo]`): Requires system libraries `geos` and `proj`
 
+## Features
+
+- **WardCartogram**: Create cartograms from predefined ward/region boundaries with density values
+- **PointCartogram**: Generate cartograms directly from point location data
+- **VoronoiCartogram**: Create Voronoi tessellation-based cartograms
+- **GeoDataFrameWardCartogram**: Direct GeoPandas integration with animated interpolation support
+- **GoogleShapeProject**: Load and project Google location history data
+
+### Utilities
+
+- `fix_invalid_geometry()` / `fix_geodataframe_geometries()`: Repair self-intersecting polygons
+- Smooth easing-based animation interpolation between original and cartogram geometries
+- Export to JSON for web visualization
+
 ## Quick Start
 
 ```python
@@ -54,6 +68,27 @@ fig, ax = carto.plot(show_new_wards=True, edge_colors='k')
 plt.show()
 ```
 
+### With GeoPandas
+
+```python
+import geopandas as gpd
+from pycartogram import GeoDataFrameWardCartogram
+
+# Load your geodata
+gdf = gpd.read_file("regions.geojson")
+gdf['density'] = gdf['population'] / gdf.geometry.area
+
+# Create cartogram
+carto = GeoDataFrameWardCartogram(gdf, 'density')
+carto.compute(verbose=True)
+
+# Get transformed GeoDataFrame
+new_gdf = carto.get_cartogram_geo_df()
+
+# Or get interpolated frame for animation (t=0 original, t=1 cartogram)
+interp_gdf = carto.get_interpolated_geo_df(t=0.5)
+```
+
 ## Documentation
 
 Build the documentation locally:
@@ -74,7 +109,9 @@ Example notebooks are stored in `notebooks/` and automatically included in the d
    - `02_point_cartograms.ipynb`
    - `03_geopandas_integration.ipynb`
 
-2. Run `make html` in `docs/` — notebooks are automatically copied and converted to HTML by nbsphinx.
+2. For notebooks with video output, place video files in `notebooks/animation/`
+
+3. Run `make html` in `docs/` — notebooks and animations are automatically copied and converted to HTML by nbsphinx.
 
 More examples can also be found in `sandbox/`.
 

@@ -30,6 +30,10 @@ notebooks:
 	else \
 		echo "No notebooks found in $(NOTEBOOKDIR)"; \
 	fi
+	@if [ -d "$(NOTEBOOKDIR)/animation" ]; then \
+		cp -r $(NOTEBOOKDIR)/animation examples/; \
+		echo "Copied animation folder"; \
+	fi
 
 # Clean copied notebooks
 clean-notebooks:
@@ -39,6 +43,10 @@ clean-notebooks:
 # Build HTML with notebooks
 html: notebooks
 	@$(SPHINXBUILD) -M html "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+	@if [ -d "examples/animation" ]; then \
+		cp -r examples/animation $(BUILDDIR)/html/examples/; \
+		echo "Copied animation folder to build"; \
+	fi
 
 # Custom targets
 livehtml: notebooks

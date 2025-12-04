@@ -94,7 +94,7 @@ class GoogleShapeProject():
         shape_data = []
         shape_records = []
         for rec in shape_reader.records():
-            shape_data.append(rec.geometry[0])
+            shape_data.append(rec.geometry)
             shape_records.append(rec)
 
         new_shape_data = []
